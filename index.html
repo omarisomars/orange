@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAG System Blueprint</title>
+<meta name="description" content="Interactive engineering blueprint of a database-integrated RAG system built during an AI Engineering internship at Orange Jordan.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff8a2a'/%3E%3Cpath d='M8 10h16M8 16h10M8 22h16' stroke='%231a0d02' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>try{var t=JSON.parse(localStorage.getItem('rag.theme'));if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<style>
+:root{
+  --bg:#0b0e14;--bg2:#10141c;--surface:#151a24;--surface2:#1b2230;--surface3:#232c3d;
+  --line:#2a3345;--line2:#3a4660;--text:#e8ecf4;--muted:#a3aec2;--faint:#76829a;
+  --accent:#ff8a2a;--accent-ink:#1a0d02;
+  --ingest:#2dd4bf;--qa:#60a5fa;--retr:#a78bfa;--gen:#fb923c;--run:#f472b6;--eval:#4ade80;--prop:#94a3b8;
+  --ok:#4ade80;--warn:#fbbf24;--team:#f472b6;
+  --grid:rgba(148,163,184,.10);--shadow:0 10px 30px rgba(0,0,0,.45);--node:#171d29;--node-hi:#1f2737;
+  --code-bg:#0d1119;--k:#c4b5fd;--s:#86efac;--n:#fdba74;--c:#76829a;--p:#7dd3fc;
+  --r:12px;--panel-w:560px;
+  --sans:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Code","Cascadia Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f3f5f9;--bg2:#ebeef4;--surface:#ffffff;--surface2:#f4f6fa;--surface3:#e8ecf3;
+  --line:#d6dce7;--line2:#b8c2d3;--text:#141a26;--muted:#4b566b;--faint:#6b7689;
+  --accent:#c2540a;--accent-ink:#fff;
+  --ingest:#0d9488;--qa:#2563eb;--retr:#7c3aed;--gen:#c2540a;--run:#db2777;--eval:#16a34a;--prop:#64748b;
+  --ok:#15803d;--warn:#b45309;--team:#be185d;
+  --grid:rgba(71,85,105,.13);--shadow:0 10px 30px rgba(30,41,59,.14);--node:#ffffff;--node-hi:#f5f7fb;
+  --code-bg:#f4f6fa;--k:#6d28d9;--s:#15803d;--n:#b45309;--c:#6b7689;--p:#0369a1;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.55 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:inherit}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface3);padding:.08em .36em;border-radius:5px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+svg.ic{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app{display:flex;flex-direction:column;height:100%}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:14px;height:56px;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--line);flex:none;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;white-space:nowrap;background:none;padding:0}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:15px}
+.brand small{display:block;font-weight:400;font-size:11px;color:var(--faint);line-height:1.1}
+.brand span.t{display:block;line-height:1.2;font-size:14px;text-align:left}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nav::-webkit-scrollbar{display:none}
+.nav button{padding:7px 11px;border-radius:8px;color:var(--muted);font-size:13.5px;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+.nav button:hover{background:var(--surface2);color:var(--text)}
+.nav button.on{background:var(--surface3);color:var(--text);font-weight:600}
+.search{position:relative;width:250px;flex:none}
+.search input{width:100%;height:36px;padding:0 34px 0 34px;border-radius:9px;background:var(--surface);border:1px solid var(--line);outline:0;font-size:13.5px}
+.search input:focus{border-color:var(--accent)}
+.search>svg{position:absolute;left:11px;top:10px;color:var(--faint);font-size:16px}
+.search kbd{position:absolute;right:9px;top:8px;font:11px var(--mono);color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.results{position:absolute;top:42px;right:0;width:min(440px,calc(100vw - 32px));max-height:min(70vh,520px);overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:none;z-index:50}
+.results.on{display:block}
+.results button{display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px}
+.results button.sel,.results button:hover{background:var(--surface3)}
+.results b{font-weight:600;font-size:14px}
+.results .kind{float:right;font-size:11px;color:var(--faint)}
+.results p{margin:1px 0 0;font-size:12.5px;color:var(--muted);line-height:1.4}
+.results mark{background:none;color:var(--accent);font-weight:600}
+.results .none{padding:14px;color:var(--muted);font-size:13.5px}
+.iconbtn{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--muted);font-size:17px;flex:none;transition:background .15s,color .15s}
+.iconbtn:hover{background:var(--surface3);color:var(--text)}
+
+/* views */
+main{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:none}
+.view.on{display:block}
+#v-blueprint.on{display:flex;flex-direction:column}
+.scroll{overflow:auto;height:100%;padding:28px 24px 64px}
+.page{max-width:1120px;margin:0 auto}
+.page>h1{font-size:27px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+.page>.lead{color:var(--muted);margin:0 0 22px;max-width:760px}
+h2.sec{font-size:17px;margin:32px 0 12px}
+
+/* blueprint strip */
+.strip{display:flex;align-items:center;gap:8px;min-height:46px;padding:6px 14px;border-bottom:1px solid var(--line);background:var(--bg);flex:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;color:var(--muted);white-space:nowrap;transition:border-color .15s,color .15s}
+button.chip:hover{border-color:var(--line2);color:var(--text)}
+button.chip.on{border-color:var(--accent);color:var(--text)}
+.chip b{color:var(--text);font-weight:650;font-variant-numeric:tabular-nums}
+.spacer{flex:1}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);white-space:nowrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+.stage{flex:1;display:flex;min-height:0;position:relative}
+
+/* outline */
+.outline{width:286px;flex:none;border-right:1px solid var(--line);background:var(--bg2);overflow:auto;padding:12px 10px 40px;display:none}
+.outline.on{display:block}
+.outline h3{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:14px 6px 4px;display:flex;align-items:center;gap:7px}
+.outline h3 i{width:8px;height:8px;border-radius:3px;background:var(--c0)}
+.outline h3:first-child{margin-top:2px}
+.outline button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 8px;border-radius:7px;font-size:13.5px;color:var(--muted)}
+.outline button:hover{background:var(--surface2);color:var(--text)}
+.outline button.sel{background:var(--surface3);color:var(--text);font-weight:600}
+.outline .gr{font-weight:600;color:var(--text)}
+.outline .ch{padding-left:30px}
+.outline .tw{margin-left:auto;font-size:12px;color:var(--faint);padding:2px 4px;transition:transform .15s}
+.outline .tw.shut{transform:rotate(-90deg)}
+
+/* canvas */
+.canvas{flex:1;min-width:0;position:relative;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--grid) 1.2px,transparent 1.2px);background-size:24px 24px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.canvas.drag{cursor:grabbing}
+.canvas svg.dia{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tools{position:absolute;left:14px;bottom:14px;display:flex;gap:2px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);z-index:5}
+.tools button{height:34px;min-width:34px;padding:0 8px;border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:16px}
+.tools button:hover{background:var(--surface3);color:var(--text)}
+.tools #zl{font:12px var(--mono);min-width:48px}
+.tools .sep{width:1px;background:var(--line);margin:5px 3px}
+.tip{position:absolute;z-index:8;max-width:280px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);padding:9px 12px;font-size:13px;line-height:1.42;pointer-events:none;opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.tip b{display:block;font-size:13.5px;margin-bottom:2px}
+.tip span{color:var(--muted)}
+
+/* svg diagram */
+.lane rect{fill:var(--c0);fill-opacity:.035;stroke:var(--c0);stroke-opacity:.3;stroke-width:1.2}
+.lane text{fill:var(--c0);font:700 14px var(--sans);letter-spacing:.09em}
+.lanehit{cursor:pointer}
+.lanehit:hover text{text-decoration:underline}
+.grp>rect.box{fill:var(--c0);fill-opacity:.04;stroke:var(--c0);stroke-opacity:.45;stroke-dasharray:5 5;stroke-width:1.2}
+.grp .gh{cursor:pointer}
+.grp .gh text{fill:var(--text);font:650 13.5px var(--sans)}
+.grp .gh:hover text{fill:var(--c0)}
+.grp .tog{cursor:pointer}
+.grp .tog rect{fill:var(--surface2);stroke:var(--line2)}
+.grp .tog:hover rect{stroke:var(--c0)}
+.grp .tog path{stroke:var(--text);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.node{cursor:pointer;transition:opacity .2s}
+.node .bg{fill:var(--node);stroke:var(--line2);stroke-width:1.2;filter:drop-shadow(0 3px 7px rgba(0,0,0,.22));transition:fill .15s,stroke .15s}
+.node .bar{fill:var(--c0)}
+.node .ttl{fill:var(--text);font:650 15.5px var(--sans)}
+.node .sub{fill:var(--muted);font:12.2px var(--sans)}
+.node .ico{color:var(--c0)}
+.node .cap{fill:var(--c0);font:700 10.5px var(--mono);letter-spacing:.04em}
+.node .scr{fill:var(--c0);font:750 19px var(--sans);text-anchor:end}
+.node:hover .bg,.node:focus-visible .bg{fill:var(--node-hi);stroke:var(--c0)}
+.node:focus{outline:0}
+.node.sel .bg{stroke:var(--c0);stroke-width:2.6;fill:var(--node-hi)}
+.node.prop .bg{stroke-dasharray:6 5;fill-opacity:.55}
+.node.team .bg{stroke-dasharray:2 4}
+.node.match .bg{stroke:var(--accent);stroke-width:2.6}
+.dia.focus .node:not(.lit):not(.sel),.dia.focus .edge:not(.lit),.dia.focus .elabel:not(.lit){opacity:.2}
+.edge{color:var(--c0);transition:opacity .2s}
+.edge path.l{fill:none;stroke:currentColor;stroke-width:1.9;stroke-opacity:.72;stroke-linejoin:round}
+.edge polygon{fill:currentColor;fill-opacity:.9}
+.edge.dash path.l{stroke-dasharray:6 5}
+.edge.lit path.l{stroke-opacity:1;stroke-width:2.8;stroke-dasharray:9 7;animation:flow .7s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.elabel{transition:opacity .2s;pointer-events:none}
+.elabel rect{fill:var(--bg);stroke:var(--line)}
+.elabel text{fill:var(--muted);font:11.5px var(--sans);text-anchor:middle}
+
+/* side panel */
+.panel{width:0;flex:none;background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;transition:width .24s cubic-bezier(.2,.7,.2,1);z-index:12}
+.panel.on{width:var(--panel-w)}
+.pin{width:var(--panel-w);display:flex;flex-direction:column;height:100%;min-height:0}
+.phead{padding:14px 18px 0;border-bottom:1px solid var(--line);flex:none;border-top:3px solid var(--c0)}
+.crumb{font-size:12px;color:var(--faint);display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding-right:40px}
+.crumb button{color:var(--faint);padding:0}
+.crumb button:hover{color:var(--text);text-decoration:underline}
+.phead h2{font-size:22px;line-height:1.22;margin:5px 0 7px;display:flex;gap:10px;align-items:center;letter-spacing:-.005em}
+.phead h2 .ic{color:var(--c0);font-size:22px}
+.pclose{position:absolute;right:10px;top:10px}
+.pin{position:relative}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.badge{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.badge.impl{color:var(--ok)}.badge.prop{color:var(--warn)}.badge.team{color:var(--team)}.badge.me{color:var(--qa)}.badge.part{color:var(--retr)}
+.nr{font-size:11.5px;font-weight:600;color:var(--warn);border:1px dashed currentColor;padding:1px 7px;border-radius:6px;white-space:nowrap}
+.ptabs{display:flex;gap:2px}
+.ptabs button{padding:7px 12px;color:var(--muted);font-size:13.5px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptabs button.on{color:var(--text);border-color:var(--c0);font-weight:600}
+.pbody{flex:1;overflow:auto;padding:14px 18px 20px;min-height:0;scroll-behavior:smooth}
+.pfoot{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--line);flex:none;background:var(--bg2)}
+.pfoot button{flex:1;display:flex;align-items:center;gap:6px;min-width:0;padding:7px 9px;border-radius:8px;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.pfoot button:hover:not(:disabled){border-color:var(--line2);color:var(--text)}
+.pfoot button:disabled{opacity:.4;cursor:default}
+.pfoot button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfoot .nx{justify-content:flex-end}
+.pfoot em{font:12px var(--mono);color:var(--faint);white-space:nowrap}
+.short{font-size:15.5px;color:var(--text);margin:0 0 14px}
+.io{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch;margin:0 0 14px}
+.io>div{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13px}
+.io small{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.io>svg{align-self:center;color:var(--faint)}
+details.s{border:1px solid var(--line);border-radius:var(--r);margin:0 0 9px;background:var(--surface);overflow:hidden}
+details.s>summary{list-style:none;cursor:pointer;padding:10px 13px;font-weight:620;font-size:14.5px;display:flex;align-items:center;gap:8px}
+details.s>summary::-webkit-details-marker{display:none}
+details.s>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--faint);border-bottom:2px solid var(--faint);transform:rotate(-45deg);transition:transform .15s}
+details.s[open]>summary::after{transform:rotate(45deg)}
+details.s>summary:hover{background:var(--surface2)}
+.sb{padding:2px 14px 13px;font-size:14.2px}
+.sb p{margin:0 0 9px}
+.sb p:last-child{margin-bottom:0}
+.sb ul,.sb ol{margin:0 0 9px;padding-left:19px}
+.sb li{margin:2px 0}
+.kv{width:100%;border-collapse:collapse;font-size:13.5px;margin:2px 0 9px}
+.kv th,.kv td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+.kv th{font-weight:600;color:var(--muted);font-size:12.5px}
+.kv tr:last-child td{border-bottom:0}
+.tw-wrap{overflow-x:auto}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:2px 0 9px}
+.cmp>div{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--surface2);font-size:13.3px}
+.cmp b{display:block;margin-bottom:2px}
+.cmp .pick{border-color:var(--c0)}
+.cmp .pick b::after{content:" · selected";color:var(--c0);font-size:11.5px;font-weight:600}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 9px}
+.pc>div{border-radius:10px;padding:9px 11px;font-size:13.3px;background:var(--surface2);border:1px solid var(--line)}
+.pc h5{margin:0 0 3px;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.pc .y h5{color:var(--ok)}.pc .n h5{color:var(--warn)}
+.pc ul{margin:0;padding-left:16px}
+.note{border-left:3px solid var(--warn);background:var(--surface2);padding:8px 12px;border-radius:0 9px 9px 0;font-size:13.3px;margin:2px 0 9px}
+.note.info{border-color:var(--qa)}
+.fx{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;margin:2px 0 9px;overflow-x:auto;font-size:19px}
+.fx math{font-size:1em}
+#panel .fx{font-size:15.5px;padding:14px 8px}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:0;margin:2px 0 9px;overflow:hidden}
+pre.code .h{display:flex;justify-content:space-between;align-items:center;font:11.5px var(--sans);color:var(--faint);padding:5px 10px;border-bottom:1px solid var(--line)}
+pre.code .h button{font-size:11.5px;color:var(--muted)}
+pre.code .h button:hover{color:var(--text)}
+pre.code code{display:block;background:none;padding:10px 12px;overflow-x:auto;font-size:12.8px;line-height:1.55;tab-size:2}
+.t-k{color:var(--k)}.t-s{color:var(--s)}.t-n{color:var(--n)}.t-c{color:var(--c);font-style:italic}.t-p{color:var(--p)}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 9px}
+.lk{display:inline-flex;gap:6px;align-items:center;font-size:12.8px;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--text)}
+.lk:hover{border-color:var(--c1,var(--accent))}
+.lk i{width:7px;height:7px;border-radius:2px;background:var(--c1,var(--accent))}
+.sub-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.tagrow{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0 0}
+.tag{font-size:11.5px;color:var(--muted);background:var(--surface3);padding:1px 7px;border-radius:5px}
+
+/* QA */
+.qa{border:1px solid var(--line);border-radius:10px;margin:0 0 8px;background:var(--surface)}
+.qa summary{list-style:none;cursor:pointer;padding:10px 12px;font-weight:600;font-size:14.2px;display:flex;gap:9px}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::before{content:"Q";font:700 11.5px var(--mono);color:var(--accent);margin-top:3px}
+.qa .a{padding:0 12px 11px 30px;color:var(--muted);font-size:14px}
+.qa .a p{margin:0 0 7px}
+.qa .act{display:flex;gap:8px;align-items:center;margin-top:7px}
+.qa .act button{font-size:12.5px;color:var(--muted);border:1px solid var(--line);padding:2px 9px;border-radius:7px}
+.qa .act button:hover{color:var(--text);border-color:var(--line2)}
+.qa .act button.done{color:var(--ok);border-color:var(--ok)}
+.qa.known>summary{color:var(--muted)}
+
+/* cards & grids */
+.grid{display:grid;gap:12px}
+.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h3{margin:0 0 4px;font-size:16px}
+.card p{margin:0 0 8px;font-size:14px;color:var(--muted)}
+.metric{cursor:pointer;text-align:left;transition:border-color .15s,transform .15s;display:block;width:100%}
+.metric:hover{border-color:var(--c0);transform:translateY(-1px)}
+.metric.on{border-color:var(--c0)}
+.mhead{display:flex;align-items:center;gap:14px}
+.gauge{width:84px;height:84px;flex:none}
+.gauge circle{fill:none;stroke-width:9}
+.gauge .tr{stroke:var(--surface3)}
+.gauge .va{stroke:var(--eval);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray .7s cubic-bezier(.2,.7,.2,1)}
+.gauge text{fill:var(--text);font:750 21px var(--sans);text-anchor:middle}
+.detail{margin-top:12px}
+.seg{display:inline-flex;gap:2px;background:var(--surface2);border:1px solid var(--line);padding:3px;border-radius:9px;flex-wrap:wrap}
+.seg button{padding:4px 11px;border-radius:7px;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--surface3);color:var(--text);font-weight:600}
+.toolbar{display:flex;gap:10px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
+.toolbar .prog{font-size:13px;color:var(--muted)}
+.stack-row{display:grid;grid-template-columns:210px 1fr auto;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);align-items:center;width:100%;text-align:left;font-size:14px}
+.stack-row:last-child{border-bottom:0}
+.stack-row:hover{background:var(--surface2)}
+.stack-row b{font-weight:640}
+.stack-row span{color:var(--muted)}
+.stack-row em{font-style:normal;font-size:12px;color:var(--c0);white-space:nowrap}
+.dec{border:1px solid var(--line);border-radius:14px;background:var(--surface);margin:0 0 10px;overflow:hidden;border-left:3px solid var(--c0)}
+.dec>summary{list-style:none;cursor:pointer;padding:12px 16px;display:grid;grid-template-columns:1fr auto;gap:2px 12px}
+.dec>summary::-webkit-details-marker{display:none}
+.dec .q{font-size:12.5px;color:var(--faint)}
+.dec .an{font-weight:640;font-size:15.5px;grid-column:1}
+.dec .lk2{grid-row:1 / span 2;grid-column:2;align-self:center}
+.dec .b{padding:0 16px 14px;font-size:14.2px}
+.tri{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.resp{width:100%;border-collapse:collapse;font-size:14px}
+.resp th,.resp td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.resp th{font-size:12.5px;color:var(--muted);font-weight:600}
+.resp tr.clk{cursor:pointer}
+.resp tr.clk:hover td{background:var(--surface2)}
+.gapitem{display:flex;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);font-size:14px;width:100%;text-align:left}
+.gapitem:last-child{border-bottom:0}
+.gapitem:hover{background:var(--surface2)}
+.gapitem em{margin-left:auto;font-style:normal;font-size:12px;color:var(--faint);white-space:nowrap}
+.pitch{font-size:15px;color:var(--text)}
+.pitch p{margin:0 0 9px}
+
+/* demos */
+.demo{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--surface2);margin:2px 0 9px;font-size:13.5px}
+.demo h5{margin:0 0 2px;font-size:13.5px}
+.demo .hint{color:var(--faint);font-size:12px;margin:0 0 9px}
+.ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:9px;font-size:12.8px;color:var(--muted)}
+.ctl input[type=range]{width:130px;accent-color:var(--accent);vertical-align:middle}
+.ctl b{color:var(--text);font-variant-numeric:tabular-nums}
+.rrf{width:100%;border-collapse:collapse;font-size:13px}
+.rrf th,.rrf td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left}
+.rrf th{font-size:11.5px;color:var(--faint);font-weight:600}
+.rrf select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 3px;font-size:12.5px}
+.rrf .top td{background:color-mix(in srgb,var(--retr) 14%,transparent)}
+.rrf td.num{font:12.5px var(--mono)}
+.bar-w{height:7px;background:var(--surface3);border-radius:4px;min-width:50px;overflow:hidden}
+.bar-w i{display:block;height:100%;background:var(--retr);transition:width .2s}
+.slots{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.slots button{width:46px;height:46px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);font:600 15px var(--mono)}
+.slots button.rel{border-color:var(--eval);color:var(--eval)}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.res>div{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12.5px;color:var(--muted)}
+.res b{display:block;font-size:17px;color:var(--text)}
+.res .bad b{color:var(--warn)}
+.claim{display:block;width:100%;text-align:left;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--surface);font-size:13.2px}
+.claim.y{border-color:var(--ok)}.claim.n{border-color:var(--warn)}
+.claim small{display:block;color:var(--muted);font-size:12px}
+.mx{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.mx button{text-align:left;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--surface);font-size:12.8px;color:var(--muted)}
+.mx button b{display:block;color:var(--text);font-size:13.2px}
+.mx button.on{border-color:var(--c0);box-shadow:0 0 0 1px var(--c0)}
+.mx-out{margin-top:8px;font-size:13.3px}
+
+.fs .topbar{display:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--line2);padding:6px 13px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:60}
+.toast.on{opacity:1}
+
+@media (max-width:1180px){:root{--panel-w:480px}.search{width:190px}.search kbd{display:none}.legend{display:none}}
+@media (max-width:900px){
+  .brand small,.brand span.t{display:none}
+  .topbar{gap:8px;padding:0 10px}
+  .nav button svg{display:none}
+  .search{width:150px}
+  .g3,.tri{grid-template-columns:1fr}.g2{grid-template-columns:1fr}
+  .stack-row{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  :root{--panel-w:100vw}
+  .topbar{flex-wrap:wrap;height:auto;padding:8px 16px;row-gap:6px}
+  .nav{order:5;flex-basis:100%}
+  .search{flex:1;width:auto}
+  .panel{position:fixed;left:0;right:0;bottom:0;top:0;width:100vw;transform:translateY(100%);transition:transform .24s cubic-bezier(.2,.7,.2,1);border:0;z-index:40;visibility:hidden}
+  .panel.on{width:100vw;transform:none;visibility:visible}
+  .outline{position:absolute;inset:0;width:100%;z-index:6;padding-left:16px;padding-right:16px}
+  .scroll{padding:20px 16px 64px}
+  .tools{left:8px;bottom:8px}
+  .pc,.res{grid-template-columns:1fr}
+  .io{grid-template-columns:1fr}.io>svg{display:none}
+  .tip{display:none}
+  .page>h1{font-size:23px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{body{overflow:visible}}
+
+</style>
+</head>
+<body>
+<div id="app">
+ <header class="topbar">
+  <button class="brand" aria-label="Open project overview"><span class="mark"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h16"/></svg></span><span><span class="t">RAG System Blueprint</span><small>Orange Jordan internship</small></span></button>
+  <nav class="nav" id="nav" aria-label="Views"></nav>
+  <div class="search"><span id="searchIcon"></span><input id="q" type="search" placeholder="Search the project" aria-label="Search components, technologies and concepts" autocomplete="off"><kbd>/</kbd><div class="results" id="results"></div></div>
+  <button class="iconbtn" id="themeBtn"></button>
+ </header>
+ <main>
+  <section class="view" id="v-blueprint">
+   <div class="strip" id="strip"></div>
+   <div class="stage">
+    <aside class="outline" id="outline" aria-label="Component outline"></aside>
+    <div class="canvas" id="canvas">
+     <svg class="dia" id="dia" role="application" aria-label="RAG system architecture diagram"><g id="world"></g></svg>
+     <div class="tools" id="tools"></div>
+     <div class="tip" id="tip"></div>
+    </div>
+    <aside class="panel" id="panel" aria-label="Component details"><div class="pin"></div></aside>
+   </div>
+  </section>
+  <section class="view" id="v-evaluation"></section>
+  <section class="view" id="v-stack"></section>
+  <section class="view" id="v-decisions"></section>
+  <section class="view" id="v-contrib"></section>
+  <section class="view" id="v-interview"></section>
+  <section class="view" id="v-roadmap"></section>
+  <section class="view" id="v-gaps"></section>
+ </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* ---------- content helpers ---------- */
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const P=s=>`<p>${s}</p>`;
+const UL=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+const OL=a=>`<ol>${a.map(x=>`<li>${x}</li>`).join('')}</ol>`;
+const KV=(rows,head)=>`<div class="tw-wrap"><table class="kv">${head?`<tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr>`:''}${rows.map(r=>`<tr>${r.map((c,i)=>(!head&&i==0)?`<th>${c}</th>`:`<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
+const CMP=a=>`<div class="cmp">${a.map(([t,d,pick])=>`<div class="${pick?'pick':''}"><b>${t}</b>${d}</div>`).join('')}</div>`;
+const PC=(y,n,yt='Strengths',nt='Limitations')=>`<div class="pc"><div class="y"><h5>${yt}</h5>${UL(y)}</div><div class="n"><h5>${nt}</h5>${UL(n)}</div></div>`;
+const NOTE=(s,info)=>`<div class="note ${info?'info':''}">${s}</div>`;
+const NR=(s='Not recorded')=>`<span class="nr">${s}</span>`;
+const CODE=(src,lang,label)=>`<pre class="code" data-lang="${lang}"><div class="h"><span>${label}</span><button data-copy>Copy</button></div><code>${esc(src)}</code></pre>`;
+const FX=m=>`<div class="fx"><math display="block">${m}</math></div>`;
+const mi=s=>`<mi>${s}</mi>`, mn=s=>`<mn>${s}</mn>`, mo=s=>`<mo>${s}</mo>`, mt=s=>`<mtext>${s}</mtext>`;
+const frac=(a,b)=>`<mfrac><mrow>${a}</mrow><mrow>${b}</mrow></mfrac>`;
+const sub=(a,b)=>`<msub>${a}${b}</msub>`;
+
+const F_RRF=FX(`<mrow>${mi('RRF')}<mo>(</mo>${mi('d')}<mo>)</mo><mo>=</mo><munder><mo>∑</mo>${mi('i')}</munder>${frac(sub(mi('w'),mi('i')),mi('k')+'<mo>+</mo>'+sub(mi('r'),mi('i'))+'<mo>(</mo>'+mi('d')+'<mo>)</mo>')}</mrow>`);
+const F_HIT=FX(`<mrow>${mt('HitRate@5')}<mo>=</mo>${frac(mt('Questions with a relevant result in top 5'),mt('Total questions'))}<mo>×</mo>${mn('100')}</mrow>`);
+const F_REC=FX(`<mrow>${mt('Recall@5')}<mo>=</mo>${frac(mt('Relevant results retrieved in top 5'),mt('Total relevant results'))}</mrow>`);
+const F_FAITH=FX(`<mrow>${mt('Faithfulness')}<mo>=</mo>${frac(mt('Claims supported by retrieved context'),mt('Total claims in the answer'))}</mrow>`);
+const RRF_VARS=KV([['<i>d</i>','A retrieved document or chunk'],['<i>w<sub>i</sub></i>','Weight of retrieval method <i>i</i>'],['<i>r<sub>i</sub></i>(<i>d</i>)','The document\'s ranking position in that method'],['<i>k</i>','Rank-smoothing constant (project value '+NR()+')'],['<i>w</i><sub>Dense</sub>','<b>0.7</b>'],['<i>w</i><sub>BM25</sub>','<b>0.3</b>']]);
+
+const NOTIMPL=NOTE('<b>Proposed, not implemented.</b> This is a possible scaling or future improvement. It is not a claim about the original system.');
+
+/* ---------- stages ---------- */
+const LANES={
+  ingest:{title:'Document Ingestion',color:'--ingest'},
+  qa:{title:'Question Answering',color:'--qa'},
+  run:{title:'Packaging & Runtime',color:'--run'},
+  eval:{title:'Evaluation',color:'--eval'},
+  prop:{title:'Proposed Improvements',color:'--prop'}
+};
+const OWN={me:['me','Developed by me'],part:['part','I contributed'],team:['team','Handled by senior engineers']};
+const STAT={impl:['impl','Implemented'],prop:['prop','Proposed, not implemented'],concept:['impl','Project process']};
+
+/* ---------- components ---------- */
+const COMPONENTS=[];
+const C=(id,o)=>COMPONENTS.push(Object.assign({id,status:'impl',own:'me',tags:[],secs:[],qa:[]},o));
+
+/* overview entries */
+C('project',{title:'Project Overview',kind:'overview',lane:'qa',icon:'blueprint',own:'me',
+ short:'A Retrieval-Augmented Generation system that let employees of a client company ask natural-language questions about their internal PDF documents and get answers with references to the original sources.',
+ tags:['Orange Jordan','AI Engineering internship','RAG','overview'],
+ secs:[
+  ['Final results',KV([['Hit Rate@5','<b>91%</b>'],['Recall@5','<b>89%</b>'],['Faithfulness','<b>93%</b>']])+P('Obtained using an internal ground-truth evaluation dataset provided by the client company.')],
+  ['Scope of my work',P('I developed the RAG pipeline under the supervision of senior engineers, including document processing, embedding generation, vector database integration, hybrid retrieval, LLM integration and performance evaluation. Senior engineers handled the frontend and deployment.')],
+  ['The two processes',UL(['<b>Document ingestion:</b> preparing and storing company documents. This builds the knowledge base.','<b>Question answering:</b> retrieving information and generating answers from that knowledge base.'])],
+  ['How to use this blueprint',UL(['Click any card, lane title or group title to open its details.','Use the chevron on a group to collapse it into one block.','Use the arrow keys or the Previous/Next buttons to walk the pipeline in order.','Press <code>/</code> to search and <code>Esc</code> to close this panel.'])]
+ ],
+ qa:[['Summarise the project in under a minute.','During my AI Engineering internship at Orange Jordan I developed a RAG system that let a client company\'s employees ask questions about internal PDFs. I extracted text with LangChain and Unstructured, cleaned it, used heading-based chunking at up to 1,000 characters with 100 overlap, embedded chunks with <code>gemini-embedding-001</code> and stored them in ChromaDB. Retrieval combined 70% dense and 30% BM25 through <code>EnsembleRetriever</code> and RRF. The top five chunks went to Gemini in a Stuffing prompt. Against the client\'s ground truth it reached 91% Hit Rate@5, 89% Recall@5 and 93% faithfulness.'],
+ ['What exactly did you own versus your team?','I developed the pipeline under senior supervision: document processing, embeddings, ChromaDB, hybrid retrieval, Gemini integration, and evaluation. I contributed to the FastAPI backend, Docker and dependency management. Senior engineers handled the frontend and deployment.']]});
+
+C('lane-ingest',{title:'Document Ingestion Pipeline',kind:'lane',lane:'ingest',icon:'layers',
+ short:'Prepares the knowledge base: PDFs are extracted, cleaned, chunked, embedded and stored in ChromaDB.',
+ tags:['pipeline','architecture'],
+ secs:[['Data flow',CODE(`Company PDF Documents
+  -> PDF Extraction (LangChain + Unstructured)
+  -> Text Cleaning (Python rule-based preprocessing)
+  -> Heading-Based Chunking (max 1,000 chars, overlap 100)
+  -> Gemini Embedding Model (gemini-embedding-001)
+  -> ChromaDB (Embeddings + Text + Metadata)`,'text','Ingestion flow')],
+ ['Link to question answering',P('ChromaDB serves dense search, and the chunks are what BM25 searches over. Everything the question-answering pipeline retrieves comes from this pipeline.')]],
+ qa:[['Why separate ingestion from question answering?','They do different jobs: ingestion prepares and stores the documents, and question answering uses that knowledge base. It also means I could propose moving ingestion into background jobs at scale so that PDF processing does not block user queries.']]});
+
+C('lane-qa',{title:'Question-Answering Pipeline',kind:'lane',lane:'qa',icon:'chat',
+ short:'Takes an employee question through FastAPI, hybrid retrieval, prompt construction and Gemini, then returns an answer with source references as JSON.',
+ tags:['pipeline','architecture'],
+ secs:[['Data flow',CODE(`Employee's Question
+  -> FastAPI
+  -> Hybrid Retrieval
+       Dense Search (ChromaDB)  weight 0.7
+       BM25 Search (Keywords)   weight 0.3
+  -> EnsembleRetriever + Reciprocal Rank Fusion
+  -> Top 5 Chunks
+  -> Prompt (Instructions + Context + Question)
+  -> Google Gemini
+  -> Generated Answer + Source References
+  -> FastAPI JSON Response
+  -> User`,'text','Question-answering flow')]]});
+
+C('business',{title:'Business Problem',sub:'Knowledge locked in PDFs',lane:'ingest',icon:'target',status:'concept',own:'me',
+ short:'Important company and customer information sat across multiple PDFs, and employees needed quick access without opening and searching each document.',
+ tags:['problem','solution','RAG vs LLM','fine-tuning','why RAG'],
+ secs:[
+  ['The problem',P('The client company had important information stored across multiple PDF documents, including information about the company and its customers. Employees needed a way to access it quickly without manually opening and searching through documents.')],
+  ['The solution',OL(['Process the company\'s PDF documents.','Split their content into smaller, searchable chunks.','Convert those chunks into numerical embeddings.','Store the embeddings in a vector database.','Retrieve relevant information when an employee asks a question.','Use Google Gemini to generate an answer based on the retrieved information.','Provide references to the original documents.'])],
+  ['Why RAG instead of a standard LLM?',P('A general-purpose LLM does not automatically have access to a company\'s private documents. RAG retrieves relevant company information and provides it to the LLM when generating an answer.')],
+  ['Why not fine-tuning?',P('Fine-tuning was not necessary because the main requirement was to give the model access to company-specific knowledge, rather than fundamentally change its behaviour.')+CMP([['RAG','Documents update without retraining the LLM. Responses are grounded in company documents. Source references are possible. Relatively cost-effective and easier to maintain.',1],['Fine-tuning','Could still be useful for other requirements, but was not needed for this use case.']])]
+ ],
+ qa:[['Why RAG rather than fine-tuning?','The need was access to company-specific knowledge, not a change in model behaviour. RAG lets documents be updated without retraining, grounds responses in the documents, supports source references, and was relatively cost-effective and easier to maintain.'],
+ ['Why not just use a general LLM?','It has no automatic access to the company\'s private documents. RAG retrieves the relevant information and gives it to the LLM at answer time.']]});
+
+C('pdfs',{title:'Company PDFs',sub:'Internal documents',lane:'ingest',icon:'file',status:'concept',own:'team',ownText:'Provided by the client company',
+ short:'The client company\'s internal PDF documents, which formed the knowledge base for the RAG system.',
+ tags:['data source','PDF','knowledge base'],io:['Client company','Raw PDF files'],
+ secs:[['Data source',P('The company provided its internal documents in PDF format. These documents formed the knowledge base for the RAG system.')+KV([['Format','PDF'],['Content','Information about the company and its customers'],['Number of documents',NR()],['Languages','Embedding model chosen for English and Arabic capability; the language mix of the corpus is '+NR()]])]]});
+
+C('docproc',{title:'Document Processing',kind:'group',lane:'ingest',icon:'layers',
+ short:'The stage that turns raw PDFs into clean, structured chunks with source metadata.',
+ tags:['pdf','cleaning','chunking','metadata'],children:['extract','clean','chunk','meta'],
+ secs:[['Stage summary',KV([['PDF extraction','LangChain + Unstructured'],['Text cleaning','Python rule-based preprocessing'],['Chunking','Heading-based, max 1,000 chars, 100 overlap'],['Metadata','Source, page number, section heading']])]]});
+
+C('extract',{title:'PDF Extraction',sub:'LangChain + Unstructured',lane:'ingest',group:'docproc',icon:'scan',
+ short:'Converts PDF content into text that the rest of the RAG pipeline can process.',
+ tags:['Unstructured','LangChain','PDF','loader'],io:['Company PDF files','Extracted text + source details'],
+ secs:[['What it does',P('I used <b>LangChain with the Unstructured document-processing library</b> to extract content from the PDFs, converting it into text the RAG pipeline could process.')],
+ ['Configuration',KV([['Framework','LangChain'],['Library','Unstructured'],['Exact loader class',NR()]])]],
+ qa:[['How did you read the PDFs?','With LangChain and the Unstructured library, which extracted the PDF content into text for the pipeline. The exact loader class is not recorded, so check the code before quoting one.']]});
+
+C('clean',{title:'Text Cleaning',sub:'Rule-based Python',lane:'ingest',group:'docproc',icon:'broom',
+ short:'Rule-based Python preprocessing that prepares clean, useful text for chunking and retrieval.',
+ tags:['preprocessing','whitespace','artefacts'],io:['Raw extracted text','Clean text with metadata kept'],
+ secs:[['What it does',UL(['Removes unnecessary whitespace.','Removes unwanted formatting artefacts.','Preserves important document information.','Maintains relevant metadata for source identification.'])+P('The goal was to prepare clean, useful text for chunking and retrieval.')],
+ ['Implementation',KV([['Method','Rule-based'],['Language','Python'],['Exact rules',NR()]])]]});
+
+C('chunk',{title:'Heading-Based Chunking',sub:'Max 1,000 · overlap 100',lane:'ingest',group:'docproc',icon:'cut',
+ short:'Divides documents into smaller sections along their headings, preserving logical structure rather than cutting everything into unrelated pieces.',
+ tags:['chunk size','overlap','1000','100','LangChain','splitter'],io:['Clean text + metadata','Chunks of up to 1,000 characters'],
+ secs:[
+  ['Configuration',KV([['Strategy','Heading-based, through LangChain'],['Maximum chunk size','<b>1,000 characters</b>'],['Chunk overlap','<b>100 characters</b>'],['Exact splitter class',NR()],['Heading detection and overlap method',NR()]])],
+  ['Why chunk at all?',P('LLMs and retrieval systems work better when relevant information can be retrieved in manageable sections. Rather than retrieving an entire PDF, the system retrieves only the sections most relevant to the employee\'s question.')],
+  ['Why a maximum of 1,000 characters?',P('A practical balance between:')+UL(['Preserving sufficient information within each chunk.','Keeping retrieval results focused.','Avoiding excessively large amounts of context.'])],
+  ['Why 100 characters of overlap?',P('Overlap helps preserve information that might otherwise be separated at chunk boundaries. If an explanation starts near the end of one chunk and continues into the next, overlap can help maintain continuity.')],
+  ['How the settings interact',NOTE('Heading-based chunking preserves document structure, while maximum chunk size and overlap control how longer sections are divided. The exact interaction depends on the LangChain splitter configuration.',1)]
+ ],
+ qa:[['Why heading-based chunking?','To preserve the logical structure of the documents rather than dividing everything into unrelated pieces.'],
+ ['Why 1,000 characters with 100 overlap?','1,000 was a practical balance between keeping enough information, staying focused, and avoiding too much context. The 100-character overlap helps keep continuity when information falls across a chunk boundary.'],
+ ['How do heading splits and the size limit work together?','Headings preserve structure, while the maximum size and overlap control how longer sections are divided. The exact behaviour depends on the splitter configuration, which is not recorded.']]});
+
+C('meta',{title:'Metadata Management',sub:'Source · page · section',lane:'ingest',group:'docproc',icon:'tag',
+ short:'Preserves each chunk\'s origin through processing and retrieval so that answers can be traced to their source.',
+ tags:['metadata','source','page number','section heading','traceability'],io:['Document details from extraction','Metadata attached to each chunk'],
+ secs:[['Fields preserved',KV([['Document source','Original PDF filename or source identifier'],['Page number','Page where the information originated'],['Section heading','Section of the document containing the information']],['Field','Description'])],
+ ['Why it matters',P('I preserved source metadata during document processing and retrieval. The metadata is stored in ChromaDB, included in the prompt context, and lets employees trace answers back to original documents. It also identifies which records to remove when a document is updated.')]],
+ qa:[['How did citations work end to end?','Metadata (filename, page, section) was preserved through processing, stored in ChromaDB, and included in the prompt. Gemini was instructed to reference the source documents.']]});
+
+C('embed',{title:'Gemini Embedding',sub:'gemini-embedding-001',lane:'ingest',icon:'vector',
+ short:'Converts document chunks into numerical vectors so that retrieval can compare semantic meaning.',
+ tags:['embedding','vectors','gemini-embedding-001','Google','Arabic','English','multilingual'],io:['Text chunks','Embedding vectors'],
+ secs:[
+  ['What is an embedding?',P('A numerical representation of text that helps the retrieval system compare semantic meaning.')+P('Example: <i>"How much revenue did the company generate?"</i> and <i>"What were the company\'s total earnings?"</i> use different words but have similar meanings. An embedding model helps identify this similarity.')],
+  ['Why this model?',KV([['Retrieval quality','Strong capabilities for semantic retrieval and multilingual content, including English and Arabic.'],['Cost','The company already had an agreement with Google that provided API access at a lower cost.'],['Integration','Could be integrated into the existing LangChain pipeline, making implementation straightforward.']])+P('Overall, a practical balance between retrieval quality, multilingual support, cost and ease of integration.')],
+  ['Configuration',KV([['Model','<code>gemini-embedding-001</code>'],['Provider','Google'],['Output dimensionality',NR()]])]
+ ],
+ qa:[['Why gemini-embedding-001?','Three reasons: strong semantic retrieval with multilingual support including English and Arabic, lower-cost API access through the company\'s agreement with Google, and straightforward LangChain integration.']]});
+
+C('chroma',{title:'ChromaDB',sub:'Vectors + text + metadata',lane:'ingest',icon:'db',
+ short:'The vector database that stores and searches embeddings together with original text and source metadata.',
+ tags:['vector database','FAISS','Qdrant','Pinecone','similarity search'],io:['Embeddings, text, metadata','Semantically similar chunks'],
+ secs:[
+  ['Stored record',KV([['Embedding','Numerical vector representing the chunk'],['Text','Original content of the chunk'],['Document source','Original PDF filename or source identifier'],['Page number','Page where the information originated'],['Section heading','Section of the document containing the information']],['Field','Description'])],
+  ['Why ChromaDB?',UL(['Lightweight.','Easy to integrate with LangChain.','Suitable for local deployment.','Straightforward to set up and manage.'])],
+  ['Alternatives considered',CMP([['ChromaDB','A practical choice for this project without unnecessary infrastructure complexity.',1],['FAISS','Efficient vector similarity search, particularly in local applications.'],['Qdrant','Capabilities suited to larger-scale production retrieval.'],['Pinecone','Managed vector database service for scalable cloud deployments.']])]
+ ],
+ qa:[['Why ChromaDB over FAISS, Qdrant or Pinecone?','It was lightweight, easy to integrate with LangChain, suitable for local deployment and simple to manage. For this project\'s requirements it avoided unnecessary infrastructure complexity. I would consider Qdrant or Pinecone at the scale of millions of documents.']]});
+
+C('update',{title:'Document Updates',sub:'Remove and re-ingest',lane:'ingest',icon:'refresh',
+ short:'When a document changes, its old records are removed and the new version is processed again, so the knowledge base stays current without retraining the LLM.',
+ tags:['update','re-index','maintenance'],io:['Updated PDF','Refreshed ChromaDB records'],
+ secs:[['Update process',OL(['Identify and remove the old document\'s records from the vector database.','Process the updated PDF again.','Clean and split the updated content.','Generate new embeddings.','Store the new embeddings, chunks and metadata in ChromaDB.'])+P('This allowed the knowledge base to stay up to date without retraining the LLM.')],
+ ['Not captured',P('How the BM25 keyword index was refreshed after an update: '+NR())]],
+ qa:[['What happens when a document changes?','I remove the old document\'s records from ChromaDB, re-run extraction, cleaning and chunking on the new PDF, generate new embeddings and store them with their metadata. No LLM retraining is needed. How BM25 was refreshed is not recorded, so confirm it before an interview.']]});
+
+C('question',{title:'Employee Question',sub:'Natural language',lane:'qa',icon:'user',status:'concept',own:'team',ownText:'Entry point',
+ short:'An employee asks a natural-language question, which reaches the system through the FastAPI backend.',
+ tags:['user','input','query'],io:['Employee','Question text sent to FastAPI'],
+ secs:[['Example',CODE(`{
+  "question": "What is the company's refund policy?"
+}`,'json','Example request')+P('The request illustrates the behaviour. The exact JSON schema is '+NR()+'.')],
+ ['Authentication',P('Document access permissions and authentication details: '+NR())]]});
+
+C('fastapi',{title:'FastAPI Backend',sub:'REST API layer',lane:'qa',icon:'api',own:'part',
+ short:'Exposes the RAG pipeline through REST API endpoints so that an application can send questions and receive generated answers.',
+ tags:['backend','REST','API','endpoint','error handling','environment variables','Python'],io:['HTTP request with a question','JSON answer with sources'],
+ secs:[
+  ['Main endpoint workflow',OL(['FastAPI receives the question.','Hybrid retrieval runs.','The top five chunks are selected.','The Gemini prompt is constructed.','The answer is generated.','A JSON response is returned.'])],
+  ['Why FastAPI?',UL(['Integrates naturally with Python AI applications.','Supports REST API development.','Provides request validation.','Supports asynchronous endpoint development.','Works well with Uvicorn and Docker.'])],
+  ['Error handling and configuration',P('I used exception handling to return appropriate HTTP responses rather than exposing internal application errors. Configuration values, particularly sensitive values such as the Gemini API key, were managed using environment variables.')],
+  ['Exact endpoint details',P('Endpoint paths: '+NR()+' · JSON schema: '+NR())]
+ ],
+ qa:[['Why FastAPI?','It fits Python AI work, supports REST development with request validation and asynchronous endpoints, and works well with Uvicorn and Docker.'],
+ ['How did you handle errors and secrets?','Exception handling returned appropriate HTTP responses instead of exposing internal errors. Sensitive values such as the Gemini API key were kept in environment variables.']]});
+
+C('hybrid',{title:'Hybrid Retrieval',kind:'group',lane:'qa',icon:'merge',
+ short:'Combines 70% dense retrieval through ChromaDB and 30% sparse retrieval through BM25, fused by LangChain\'s EnsembleRetriever with Reciprocal Rank Fusion.',
+ tags:['hybrid search','EnsembleRetriever','70/30','main challenge','dense','sparse'],children:['dense','bm25','rrf','top5'],
+ secs:[
+  ['Configuration',KV([['Dense retrieval','ChromaDB similarity search, weight <b>0.7</b>'],['Sparse retrieval','BM25, weight <b>0.3</b>'],['Combiner','LangChain <code>EnsembleRetriever</code>'],['Fusion','Weighted Reciprocal Rank Fusion'],['Final selection','Top <b>5</b> chunks'],['Candidates per retriever before the final five',NR()]])],
+  ['The main technical challenge',P('The most significant challenge was retrieving the correct information from the company\'s documents. Semantic search understood meaning but sometimes missed exact technical terms or keywords. BM25 matched keywords but sometimes failed when the question used different words from the document.')+P('I combined the two methods, which allowed the system to benefit from both semantic understanding and exact keyword matching. The approach contributed to the retrieval performance measured during evaluation.')],
+  ['Worked example',P('An employee asks: <i>"What is the refund policy for product ABC-123?"</i>')+CMP([['Dense retrieval','Recognises information about refund procedures, even if a document says "return eligibility".'],['BM25','Identifies the exact product identifier <code>ABC-123</code>.']])+P('Combining both improves the chances of retrieving the correct information.')],
+  ['Try it: rank fusion','<div data-demo="rrf"></div>'],
+  ['Illustrative configuration',CODE(`from langchain.retrievers import EnsembleRetriever
+
+hybrid = EnsembleRetriever(
+    retrievers=[dense_retriever, bm25_retriever],
+    weights=[0.7, 0.3],
+)`,'python','Illustrative, not the original code')+P('The weights and class are documented. The surrounding code and import path are illustrative.')]
+ ],
+ qa:[['What was the hardest technical problem?','Retrieving the correct information. Dense search missed exact terms and BM25 missed rephrased questions, so I combined them with <code>EnsembleRetriever</code> and weighted RRF at 0.7 dense and 0.3 BM25.'],
+ ['Why hybrid rather than just vector search?','Vector search may miss exact keywords, identifiers or specialised terms. BM25 catches those but misses synonyms. Combining them improves the chance of finding the right chunks, as in the ABC-123 refund example.'],
+ ['How did you choose 70/30?','<b>Not recorded.</b> The documentation states that dense received the higher weight, but not how the values were selected. Confirm this from the project code or notes before an interview.']]});
+
+C('dense',{title:'Dense Retrieval',sub:'ChromaDB · weight 0.7',lane:'qa',group:'hybrid',icon:'radar',
+ short:'Uses embeddings to compare the semantic meaning of the question with the stored chunks.',
+ tags:['semantic search','similarity search','0.7','vector'],io:['Employee question','Ranked list by semantic similarity'],
+ secs:[['How it works',P('Dense retrieval uses embeddings to compare the semantic meaning of the employee\'s question with the stored document chunks.')],
+ ['Trade-offs',PC(['Identifies relevant information even when different wording is used.'],['May sometimes miss exact keywords, identifiers or specialised technical terms.'])],
+ ['Configuration',KV([['Store','ChromaDB'],['Fusion weight','<b>0.7</b>'],['Candidates retrieved',NR()]])]]});
+
+C('bm25',{title:'BM25 Retrieval',sub:'Keywords · weight 0.3',lane:'qa',group:'hybrid',icon:'key',
+ short:'A keyword-based retrieval algorithm that finds chunks through term matching.',
+ tags:['sparse search','keyword','term frequency','0.3'],io:['Employee question + chunks','Ranked list by keyword relevance'],
+ secs:[['How it works',P('BM25 ranks documents based on factors such as matching terms, term frequency, document frequency and document length.')],
+ ['Trade-offs',PC(['Effective for exact keywords, product names, technical terms and identifiers.'],['May miss relevant information when the question and document use different words with similar meanings.'])],
+ ['Configuration',KV([['Fusion weight','<b>0.3</b>'],['Candidates retrieved',NR()],['Index storage and refresh',NR()]])]],
+ qa:[['What does BM25 consider when ranking?','Matching terms, term frequency, document frequency and document length.']]});
+
+C('rrf',{title:'Weighted RRF',sub:'EnsembleRetriever',lane:'qa',group:'hybrid',icon:'funnel',
+ short:'Combines the two ranked lists using weighted Reciprocal Rank Fusion, so it fuses rankings instead of raw scores.',
+ tags:['Reciprocal Rank Fusion','formula','EnsembleRetriever','rank fusion','rankings'],io:['Two ranked lists','One fused ranking'],
+ secs:[
+  ['Formula',F_RRF+RRF_VARS],
+  ['What does 70/30 mean?',P('Dense retrieval had a higher weight than BM25 in the rank-fusion process.')+NOTE('It does <b>not</b> mean adding 70% of a cosine similarity score to 30% of a BM25 score. RRF combines rankings, not raw similarity scores.')],
+  ['Try it','<div data-demo="rrf"></div>']
+ ],
+ qa:[['What does 70/30 actually mean?','Those are the weights in Reciprocal Rank Fusion, which act on each method\'s rank positions. It is not a blend of 70% cosine similarity and 30% BM25 score.'],
+ ['Write the RRF formula.','RRF(d) = Σ<sub>i</sub> w<sub>i</sub> / (k + r<sub>i</sub>(d)), where w<sub>i</sub> is the method weight, r<sub>i</sub>(d) the rank position in that method, and k a rank-smoothing constant.']]});
+
+C('top5',{title:'Top-5 Selection',sub:'Five highest-ranked chunks',lane:'qa',group:'hybrid',icon:'list',
+ short:'After fusion, the five highest-ranked chunks are selected and passed to prompt construction.',
+ tags:['top k','k=5','context','token usage','latency','cost'],io:['Fused ranking','Five chunks + metadata'],
+ secs:[['Why five?',P('A practical balance between:')+UL(['Retrieving sufficient relevant information.','Limiting unnecessary context.','Controlling LLM token usage.','Reducing latency and API cost.'])],
+ ['No reranker in the final pipeline',P('I did not implement an additional cross-encoder reranker. I considered it as a possible improvement, but the existing hybrid approach performed well enough for the project\'s requirements. See <button class="lk" data-go="rerank"><i></i>Cross-Encoder Reranker</button>.')]],
+ qa:[['Why five chunks?','It balanced retrieving enough information against unnecessary context, token usage, latency and API cost.'],
+ ['Did you use a reranker?','No. I considered a cross-encoder as an improvement, but it adds computational cost and latency, and hybrid retrieval performed well enough for the requirements.']]});
+
+C('gen',{title:'Answer Generation',kind:'group',lane:'qa',icon:'spark',
+ short:'Builds the prompt, calls Google Gemini once with all five chunks, and produces a grounded answer with source references.',
+ tags:['LLM','generation','stuffing'],children:['prompt','gemini','guard','sources'],
+ secs:[['Stage summary',KV([['Prompt','Instructions + Context + Question'],['Model','Google Gemini (exact version '+NR()+')'],['Strategy','Stuffing: all five chunks in one request'],['Output','Generated answer with source references']])]]});
+
+C('prompt',{title:'Prompt Construction',sub:'Instructions + context + Q',lane:'qa',group:'gen',icon:'edit',
+ short:'Structures the request to Gemini from three components: instructions, retrieved context and the user question.',
+ tags:['prompt','stuffing','template','context','Map-Reduce','Refine'],io:['Five chunks + question','Single prompt'],
+ secs:[
+  ['Structure',KV([['1. Instructions','Tell Gemini how to generate the answer and emphasise relying on the retrieved information.'],['2. Retrieved context','The five retrieved chunks and their associated metadata.'],['3. User question','The employee\'s original question.']])],
+  ['Conceptual prompt',CODE(`Instructions:
+Answer the user's question using the
+retrieved context provided below.
+
+Do not invent unsupported information.
+
+If the information is not available,
+state that it cannot be found in
+the provided documents.
+
+Reference the source document
+and page number where possible.
+
+Context:
+[Retrieved Chunk 1]
+Source: company_policy.pdf
+Page: 4
+Section: Refund Policy
+Content: ...
+
+[Retrieved Chunk 2]
+Source: company_policy.pdf
+Page: 5
+Section: Refund Conditions
+Content: ...
+
+...
+
+[Retrieved Chunk 5]
+
+Question:
+{user_question}
+
+Answer:`,'text','Illustrates the structure, not the exact original prompt')],
+  ['Generation strategy: Stuffing',P('Stuffing places all five retrieved chunks into a single prompt and sends them to Gemini in one request. It required fewer LLM calls than alternatives, which helped reduce API costs, response latency and pipeline complexity. Because only five chunks were retrieved, the amount of context was manageable.')+CMP([['Stuffing','One request with all five chunks.',1],['Map-Reduce','Processes separate chunks using individual LLM calls before combining the results.'],['Refine','Generates an initial answer and progressively updates it as more context is processed.']])+P('Both alternatives can be useful for larger information-processing tasks, but were unnecessary for this implementation.')]
+ ],
+ qa:[['Why Stuffing rather than Map-Reduce or Refine?','Fewer LLM calls meant lower API cost, lower latency and less complexity. With only five chunks, the context was manageable in a single prompt.'],
+ ['What was in your prompt?','Instructions (use the context, do not invent, say when information is missing, reference sources), the five chunks with source, page and section, and the question.']]});
+
+C('gemini',{title:'Google Gemini',sub:'LLM answer generation',lane:'qa',group:'gen',icon:'spark',
+ short:'Generates the natural-language answer from the constructed prompt.',
+ tags:['LLM','generation','Google','API'],io:['Single prompt','Natural-language answer'],
+ secs:[['Integration',P('After retrieving the top five chunks, I passed them to Google Gemini to generate the final response. I integrated Gemini and designed the prompt structure for context-grounded answer generation.')+KV([['Provider','Google'],['Exact model and version',NR()],['Requests per question','One generation request (Stuffing)'],['API key','Managed through environment variables'],['Measured latency and API cost',NR()]])],
+ ['Why Google models?',P('Partly because the client had access to lower-cost API services through an existing agreement.')]]});
+
+C('guard',{title:'Hallucination Controls',sub:'Grounding and refusal rules',lane:'qa',group:'gen',icon:'shield',
+ short:'Four mechanisms that reduce the risk of unsupported answers.',
+ tags:['hallucination','grounding','insufficient information','safety'],io:['Retrieved context + instructions','More grounded behaviour from Gemini'],
+ secs:[['Mechanisms',KV([['1. Grounding','Gemini receives retrieved information from the company\'s documents.'],['2. Hybrid retrieval','Dense and keyword search improve the relevance of retrieved chunks.'],['3. Prompt instructions','Gemini is told to answer from the retrieved context, not invent unsupported information.'],['4. Insufficient-information handling','If chunks lack enough information, Gemini is instructed to acknowledge that the answer is unavailable.']])],
+ ['Limit',NOTE('Prompt-based grounding and citations reduce the risk of hallucinations but do not guarantee that an LLM will always produce a fully supported answer.')]],
+ qa:[['How did you reduce hallucinations?','Grounding on retrieved documents, hybrid retrieval for better relevance, prompt instructions against invention, and instructions to acknowledge missing information. These reduce the risk but do not eliminate it, which is why I measured faithfulness.']]});
+
+C('sources',{title:'Answer + References',sub:'Traceable output',lane:'qa',group:'gen',icon:'quote',
+ short:'The generated answer with references to the original documents, so that employees can trace answers back to their source.',
+ tags:['citations','source references','traceability'],io:['Gemini answer + chunk metadata','Answer with document references'],
+ secs:[['How references work',P('The prompt included information such as document filename, page number and section heading. Gemini was instructed to reference the source documents when generating answers, which allowed employees to trace answers back to their original documents.')+NOTE('References are prompt-based, so they reduce risk but do not guarantee a fully supported answer.')]]});
+
+C('response',{title:'JSON Response',sub:'Answer + sources to user',lane:'qa',icon:'send',own:'part',
+ short:'FastAPI returns the answer and its sources to the user as JSON.',
+ tags:['response','JSON','output','schema'],io:['Answer with references','JSON delivered to the user'],
+ secs:[['Illustrative response',CODE(`{
+  "answer": "The refund policy states that ...",
+  "sources": [
+    {
+      "document": "company_policy.pdf",
+      "page": 4,
+      "section": "Refund Policy"
+    }
+  ]
+}`,'json','Illustrative only')+NOTE('This illustrates the intended behaviour. The exact endpoint names and JSON schema from the original project have not been confirmed.')]]});
+
+C('runtime',{title:'Packaging & Runtime',kind:'group',lane:'run',icon:'box',own:'part',
+ short:'How the FastAPI application was packaged and served. I contributed to containerisation and dependencies, and senior engineers handled the frontend and deployment.',
+ tags:['deployment','docker','containers'],children:['poetry','docker','uvicorn','frontend'],
+ secs:[['Stack layers',KV([['Poetry','Dependency management'],['Docker','Containerised application'],['Uvicorn','ASGI server running FastAPI'],['Frontend and deployment','Senior engineers']])]]});
+
+C('poetry',{title:'Poetry',sub:'Dependency management',lane:'run',group:'runtime',icon:'lock',own:'part',
+ short:'Manages Python packages and versions so that the same environment can be reproduced when building the Docker container.',
+ tags:['pyproject.toml','poetry.lock','dependencies','Python packages'],io:['Dependency declarations','Locked, reproducible environment'],
+ secs:[['Key files',KV([['<code>pyproject.toml</code>','Defined the project configuration and its Python dependencies.'],['<code>poetry.lock</code>','Locked dependency versions to help create consistent environments.']],['File','Purpose'])],
+ ['Why Poetry?',P('It helped me manage package versions and reproduce the same development environment when building the Docker container.')]],
+ qa:[['What is the difference between pyproject.toml and poetry.lock?','<code>pyproject.toml</code> defines the project configuration and dependencies, while <code>poetry.lock</code> locks versions so environments stay consistent.']]});
+
+C('docker',{title:'Docker',sub:'Containerised FastAPI app',lane:'run',group:'runtime',icon:'box',own:'part',
+ short:'Packages the application and its dependencies into a reproducible environment.',
+ tags:['Dockerfile','container','image'],io:['App code + locked dependencies','Runnable container'],
+ secs:[['Dockerfile process',OL(['Start from a Python base image.','Install Poetry.','Copy dependency configuration files.','Install project dependencies.','Copy the application code.','Configure Uvicorn to run the FastAPI application.'])],
+ ['Illustrative Dockerfile',CODE(`FROM python:<version>
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry install
+COPY . .
+CMD ["uvicorn", "<module>:app", "--host", "0.0.0.0"]`,'docker','Illustrative, follows the documented steps')+P('The six steps are documented. The exact file contents, base image and flags are '+NR()+'.')]],
+ qa:[['Walk me through your Dockerfile.','Start from a Python base image, install Poetry, copy the dependency files, install dependencies, copy the application code, then configure Uvicorn to run FastAPI.']]});
+
+C('uvicorn',{title:'Uvicorn',sub:'ASGI server',lane:'run',group:'runtime',icon:'server',own:'part',
+ short:'The ASGI server that runs the FastAPI application and handles incoming HTTP requests.',
+ tags:['ASGI','server','HTTP'],io:['HTTP requests','Calls into FastAPI'],
+ secs:[['Role',P('Uvicorn was used as the ASGI server for FastAPI. Its job was to run the web application and handle incoming HTTP requests.')+KV([['Workers, port and flags',NR()]])]]});
+
+C('frontend',{title:'Frontend & Deployment',sub:'Senior engineers',lane:'run',group:'runtime',icon:'team',own:'team',
+ short:'Senior engineers handled the frontend and deployment responsibilities and supervised the project.',
+ tags:['deployment','frontend','team','supervision'],
+ secs:[['Ownership',P('I worked on the RAG pipeline and contributed to the backend and containerisation work. Senior engineers handled the frontend and deployment responsibilities.')+NOTE('Do not present frontend or production deployment as your own work. Technical details of them are not recorded here.')]]});
+
+C('evalgroup',{title:'Performance Evaluation',kind:'group',lane:'eval',icon:'gauge',
+ short:'Measures retrieval and answer generation separately against the client\'s ground truth, so that problems can be traced to the stage that caused them.',
+ tags:['evaluation','metrics','methodology'],children:['gt','hit','recall','faith','ragas','errors'],view:'evaluation',
+ secs:[['Why different metrics?',P('A RAG system has two major stages: retrieval (finding the relevant information) and generation (producing a correct answer using it). Evaluating them separately helps identify where problems occur.')],
+ ['Results',KV([['Hit Rate@5','<b>91%</b>','Python script'],['Recall@5','<b>89%</b>','Python script'],['Faithfulness','<b>93%</b>','RAGAS'],['Context recall',NR(),'RAGAS'],['Answer correctness',NR(),'RAGAS']],['Metric','Score','Tool'])],
+ ['Tools',UL(['<b>Python evaluation scripts:</b> Hit Rate@5 and Recall@5, using the company\'s ground-truth document information.','<b>RAGAS:</b> LLM-based evaluation of generated answers, including faithfulness, context recall and answer correctness.'])]],
+ qa:[['How did you evaluate the system?','With the company\'s internal ground-truth dataset of questions, expected answers and relevant documents. Python scripts measured Hit Rate@5 and Recall@5, and RAGAS evaluated faithfulness, context recall and answer correctness.']]});
+
+C('gt',{title:'Ground-Truth Dataset',sub:'Provided by the client',lane:'eval',group:'evalgroup',icon:'file',status:'concept',own:'team',ownText:'Provided by the client company',
+ short:'An internal evaluation dataset of test questions, expected answers and relevant documents.',
+ tags:['test set','dataset','expected answers'],
+ secs:[['Contents',UL(['Test questions.','Expected answers.','Relevant documents associated with those questions.'])+KV([['Number of questions',NR()]])]],
+ qa:[['How big was your test set?','<b>Not recorded.</b> Confirm the number before quoting one in an interview.']]});
+
+C('hit',{title:'Hit Rate@5',sub:'Python script',score:'91%',lane:'eval',group:'evalgroup',icon:'target',
+ short:'The percentage of test questions for which at least one relevant result appears among the top five retrieved results.',
+ tags:['91%','metric','formula','retrieval metric'],view:'evaluation',
+ secs:[['Result',KV([['Hit Rate@5','<b>91%</b>']])+P('According to the document-level matching method used, the system retrieved at least one relevant document among its top five results for 91% of test questions.')],
+ ['Formula',F_HIT],
+ ['How I calculated it',OL(['For every test question, retrieve the top five chunks.','Check the source document identifiers against the company\'s ground truth.','Mark the question as successful if at least one retrieved result matches a relevant document.','Calculate the percentage of successful questions.'])],
+ ['Illustrative script',CODE(`hits = 0
+for item in ground_truth:
+    top5 = retrieve(item.question, k=5)
+    docs = {chunk.source for chunk in top5}
+    if docs & set(item.relevant_docs):
+        hits += 1
+
+hit_rate = hits / len(ground_truth) * 100`,'python','Illustrative, not the original script')]],
+ qa:[['What is Hit Rate@5 and what does 91% mean?','The share of test questions with at least one relevant result in the top five. Using document-level matching, that happened for 91% of questions.'],
+ ['What is a weakness of your Hit Rate measure?','It was document-level, so a hit shows the right document was retrieved, not necessarily that the retrieved chunk contained the exact evidence.']]});
+
+C('recall',{title:'Recall@5',sub:'Python script',score:'89%',lane:'eval',group:'evalgroup',icon:'net',
+ short:'The proportion of all relevant results that were retrieved among the top five, averaged across test questions.',
+ tags:['89%','metric','formula','deduplication','document-level'],view:'evaluation',
+ secs:[['Result',KV([['Recall@5','<b>89%</b>']])+P('The system retrieved an average of 89% of the relevant ground-truth documents within the top five results, based on the project\'s evaluation method.')],
+ ['Formula',F_REC+P('The average across all test questions gives the overall recall.')],
+ ['How I calculated it',OL(['Obtain the top five retrieved results for each test question.','Identify their source documents.','Compare them against the relevant documents in the company\'s ground truth.','Calculate recall for each question.','Average the recall values.'])],
+ ['Evaluation caveat',NOTE('Because the ground truth was document-based, document identifiers should be deduplicated before calculating document-level recall. Otherwise, multiple chunks from the same document could incorrectly count as multiple relevant documents. Whether the reported calculation deduplicated is <b>not recorded</b>. Document-level relevance also does not necessarily prove that the retrieved chunk contains the exact evidence needed.')+'<div data-demo="dedup"></div>'],
+ ['Illustrative script',CODE(`scores = []
+for item in ground_truth:
+    top5 = retrieve(item.question, k=5)
+    retrieved_docs = {chunk.source for chunk in top5}   # deduplicated
+    relevant = set(item.relevant_docs)
+    scores.append(len(retrieved_docs & relevant) / len(relevant))
+
+recall_at_5 = sum(scores) / len(scores)`,'python','Illustrative, not the original script')]],
+ qa:[['Difference between Hit Rate and Recall?','Hit Rate asks whether at least one relevant result appeared in the top five. Recall asks what proportion of all relevant results appeared.'],
+ ['What could inflate your recall number?','Multiple chunks from the same document could count as multiple relevant documents if identifiers are not deduplicated. Whether the reported calculation deduplicated is not recorded, so check the script.']]});
+
+C('faith',{title:'Faithfulness',sub:'RAGAS · LLM as judge',score:'93%',lane:'eval',group:'evalgroup',icon:'shield',
+ short:'Measures how well the generated answer is supported by the retrieved context.',
+ tags:['93%','0.93','metric','RAGAS','LLM-as-a-Judge','claims'],view:'evaluation',
+ secs:[['Result',KV([['RAGAS score','<b>0.93</b> (93%)']])+P('This indicates strong grounding of the generated responses in the retrieved information.')+NOTE('It does <b>not</b> mean that 93% of all answers were factually correct. Faithfulness concerns support from the retrieved context only.')],
+ ['Why it matters',P('An answer may sound correct but still contain statements that are not supported by the provided documents. Faithfulness helps identify this problem.')],
+ ['How I calculated it',P('I used <b>RAGAS</b> with an LLM-as-a-Judge approach to evaluate generated answers against their retrieved context. It assesses whether the claims made in an answer are supported by the retrieved information.')+F_FAITH+P('This is the general form of the metric. The exact RAGAS evaluator model and configuration are '+NR()+'.')],
+ ['Try it: claim check','<div data-demo="claims"></div>']],
+ qa:[['What does 93% faithfulness mean?','RAGAS scored answers at 0.93 for support from retrieved context. It indicates strong grounding, but it does not mean 93% of answers were factually correct.'],
+ ['Why might a faithful answer still be wrong?','Faithfulness only checks support from the retrieved context, so an answer can be faithful to irrelevant or insufficient context. That is why I also used answer correctness.']]});
+
+C('ragas',{title:'RAGAS',sub:'Context recall · correctness',lane:'eval',group:'evalgroup',icon:'flask',
+ short:'The LLM-based evaluation framework used for faithfulness, context recall and answer correctness.',
+ tags:['context recall','answer correctness','LLM evaluation'],
+ secs:[['Metrics used',KV([['Faithfulness','Answer vs. retrieved context','<b>0.93</b>'],['Context recall','How much of the information required for a reference answer is supported by the retrieved context. Helps identify retrieval-stage problems.',NR()],['Answer correctness','Generated answer vs. expected ground-truth answer. Helps assess whether the final response answers accurately.',NR()]],['Metric','What it compares','Score'])],
+ ['Why these are useful',P('A system might retrieve good information but generate the wrong answer. Alternatively, Gemini might generate a convincing answer even though the retrieved context is insufficient. Using multiple metrics separates retrieval performance from answer-generation performance.')],
+ ['Configuration',KV([['Evaluator model and configuration',NR()]])]],
+ qa:[['Which RAGAS metrics did you use?','Faithfulness, context recall and answer correctness. Only the faithfulness score (0.93) is recorded here, so do not quote the others.']]});
+
+C('errors',{title:'Error Analysis',sub:'Retrieval vs generation',lane:'eval',group:'evalgroup',icon:'bug',
+ short:'Compares the retrieved context with Gemini\'s final answer to identify where mistakes occurred.',
+ tags:['debugging','retrieval problem','generation problem','diagnosis'],view:'evaluation',
+ secs:[['Interpretation matrix','<div data-demo="matrix"></div>'],
+ ['Retrieval problems',P('The system failed to retrieve the information needed. Potential causes:')+UL(['Missing exact keywords.','Semantic similarity mismatches.','Relevant information split across chunks.','Incorrect ranking of retrieved results.'])],
+ ['Generation problems',P('Gemini received relevant information but produced an incorrect or unsupported answer. Potential causes:')+UL(['Incorrect interpretation of context.','Unsupported additional claims.','Failure to follow prompt instructions.'])],
+ ['Improvements implemented',UL(['Hybrid retrieval combining dense search and BM25.','Weighted RRF for retrieval ranking.','Prompt improvements to encourage context-grounded answers.','Evaluation of both retrieval and generation performance.'])]],
+ qa:[['How did you tell retrieval failures from generation failures?','I compared retrieved context with the final answer. If context lacked the information and the answer was wrong, that was likely retrieval. If context had it and the answer was still wrong, that was likely generation. A correct-looking answer with missing context suggests an unsupported answer or reliance on model knowledge.']]});
+
+C('proposed',{title:'Proposed Improvements',kind:'group',lane:'prop',icon:'road',status:'prop',own:'me',
+ short:'Scaling and future ideas I would prioritise. None of these were implemented in the original system.',
+ tags:['future','scaling','roadmap'],children:['rerank','cache','monitor','scale','security'],view:'roadmap',
+ secs:[['Status',NOTIMPL+P('If rebuilding the project, I would prioritise three improvements: cross-encoder reranking, caching and automated monitoring.')]]});
+
+C('rerank',{title:'Cross-Encoder Reranker',sub:'Future priority 1',lane:'prop',group:'proposed',icon:'funnel',status:'prop',
+ short:'Retrieve a larger candidate set with hybrid retrieval, then use a cross-encoder to select the most relevant five chunks.',
+ tags:['reranking','cross-encoder','future'],
+ secs:[['Status',NOTIMPL],['Proposed pipeline',OL(['Retrieve 20 candidate chunks using hybrid retrieval.','Pass those chunks through a cross-encoder reranker.','Select the five most relevant chunks.','Send those chunks to Gemini.'])+P('A cross-encoder evaluates the question and a candidate chunk together, potentially improving relevance ranking.')],
+ ['Trade-offs',PC(['Could improve retrieval relevance.'],['Adds computational cost and latency.'],'Benefit','Cost')+P('The existing hybrid retrieval approach performed well enough for the project\'s requirements.')]],
+ qa:[['How would you improve retrieval?','Add a cross-encoder: retrieve 20 candidates with hybrid retrieval, rerank them, and send the best five to Gemini. It could improve relevance, at the cost of more computation and latency.']]});
+
+C('cache',{title:'Caching',sub:'Future priority 2',lane:'prop',group:'proposed',icon:'bolt',status:'prop',
+ short:'Cache suitable repeated queries and processing steps to reduce latency, redundant computation and API costs.',
+ tags:['cache','latency','cost','future'],secs:[['Status',NOTIMPL],['Idea',P('I would introduce caching for suitable repeated queries and processing steps, reducing redundant computation and repeated API requests. This could reduce latency and API costs.')]]});
+
+C('monitor',{title:'Automated Monitoring',sub:'Future priority 3',lane:'prop',group:'proposed',icon:'pulse',status:'prop',
+ short:'Track quality and operations over time to make the system easier to maintain in production.',
+ tags:['observability','monitoring','future'],secs:[['Status',NOTIMPL],['What to monitor',UL(['Retrieval quality.','Response latency.','API failures.','Token usage and API costs.','Faithfulness and answer quality over time.'])]]});
+
+C('scale',{title:'Scaling Architecture',sub:'Users and documents',lane:'prop',group:'proposed',icon:'scale',status:'prop',
+ short:'How the system could grow to thousands of concurrent users and millions of documents.',
+ tags:['load balancer','concurrency','Qdrant','Pinecone','background jobs','scale'],
+ secs:[['Status',NOTIMPL],['Plan',KV([['Thousands of concurrent users','Multiple FastAPI containers behind a load balancer, plus request monitoring and suitable limits on external API usage.'],['Millions of documents','A more scalable vector database such as Qdrant or Pinecone, and separating document processing from the question-answering API.'],['Background processing','Move ingestion into background jobs so that PDF processing and embedding generation do not block user queries.']])]],
+ qa:[['How would you scale this to thousands of users and millions of documents?','Run multiple FastAPI containers behind a load balancer with request monitoring and API limits, move to Qdrant or Pinecone, separate ingestion into background jobs, and add caching.']]});
+
+C('security',{title:'Production Security',sub:'Access control',lane:'prop',group:'proposed',icon:'lock',status:'prop',
+ short:'What a production implementation should include for confidential company data.',
+ tags:['authentication','access control','secrets'],secs:[['Status',NOTIMPL],['Requirements',UL(['Employee authentication.','Document-level access controls.','Secure API key management.','Appropriate protection for confidential company data.'])+P('What the original system had for permissions and authentication: '+NR())]]});
+
+/* ---------- reading order ---------- */
+const ORDER=['project','business','lane-ingest','pdfs','docproc','extract','clean','chunk','meta','embed','chroma','update','lane-qa','question','fastapi','hybrid','dense','bm25','rrf','top5','gen','prompt','gemini','guard','sources','response','runtime','poetry','docker','uvicorn','frontend','evalgroup','gt','hit','recall','faith','ragas','errors','proposed','rerank','cache','monitor','scale','security'];
+
+/* ---------- stack ---------- */
+const STACK=[
+['Programming language','Python','Main development language','fastapi'],
+['RAG framework','LangChain','Building and connecting pipeline components','hybrid'],
+['PDF processing','Unstructured, through LangChain','Extracting information from PDFs','extract'],
+['Text preprocessing','Python','Cleaning extracted text','clean'],
+['Chunking','Heading-based chunking','Organising text into smaller sections','chunk'],
+['Embedding model','gemini-embedding-001','Converting text into vectors','embed'],
+['Vector database','ChromaDB','Storing and searching embeddings','chroma'],
+['Dense retrieval','ChromaDB similarity search','Finding semantically related chunks','dense'],
+['Sparse retrieval','BM25','Finding chunks using keyword matching','bm25'],
+['Hybrid retrieval','LangChain EnsembleRetriever','Combining dense and sparse search','hybrid'],
+['Rank fusion','Reciprocal Rank Fusion (RRF)','Combining retrieval rankings','rrf'],
+['LLM','Google Gemini','Generating natural-language answers','gemini'],
+['Backend','FastAPI','Exposing the RAG pipeline through an API','fastapi'],
+['Server','Uvicorn','Running the FastAPI application','uvicorn'],
+['Containerisation','Docker','Packaging the application','docker'],
+['Dependency management','Poetry','Managing Python packages and versions','poetry'],
+['Evaluation','Python scripts and RAGAS','Measuring retrieval and answer quality','evalgroup']];
+
+/* ---------- decisions ---------- */
+const DECISIONS=[
+['Approach','How should the LLM access company knowledge?','RAG over standard LLM or fine-tuning','business',UL(['A general LLM has no automatic access to private documents.','Fine-tuning was unnecessary because the requirement was knowledge access, not behaviour change.','Documents update without retraining, answers are grounded, sources can be cited, and it is relatively cost-effective.'])],
+['Ingestion','How should documents be split?','Heading-based chunking','chunk',UL(['Preserves logical structure rather than creating unrelated pieces.','Retrieval returns relevant sections rather than an entire PDF.'])],
+['Ingestion','What chunk size and overlap?','1,000 characters max, 100 overlap','chunk',UL(['1,000 balances enough information, focused retrieval and limited context.','100 overlap protects information at chunk boundaries.'])],
+['Ingestion','Which embedding model?','gemini-embedding-001','embed',UL(['Semantic retrieval and multilingual content, including English and Arabic.','Lower-cost API access through the company\'s agreement with Google.','Straightforward integration with the LangChain pipeline.'])],
+['Ingestion','Which vector database?','ChromaDB over FAISS, Qdrant and Pinecone','chroma',UL(['Lightweight, easy to integrate, suitable for local deployment, easy to manage.','Avoided unnecessary infrastructure complexity for this project.'])],
+['Retrieval','How should relevant chunks be found?','Hybrid: dense plus BM25','hybrid',UL(['Dense handles different wording but can miss exact terms.','BM25 handles exact identifiers but can miss rephrasing.','This addressed the project\'s main technical challenge.'])],
+['Retrieval','How should the two rankings be combined?','EnsembleRetriever with weighted RRF, 0.7 / 0.3','rrf',UL(['RRF combines rankings rather than raw similarity scores.','Dense retrieval received the higher weight.','How the 0.7 and 0.3 values were selected: '+NR()])],
+['Retrieval','How many chunks should reach the LLM?','Top 5','top5',UL(['Enough relevant information without unnecessary context.','Controls token usage, latency and API cost.'])],
+['Retrieval','Should a reranker be added?','No cross-encoder in the final pipeline','rerank',UL(['It would add computational cost and latency.','Hybrid retrieval performed well enough for the requirements.','Kept as a future improvement.'])],
+['Generation','How should context reach Gemini?','Stuffing over Map-Reduce and Refine','prompt',UL(['Fewer LLM calls reduced API cost, latency and pipeline complexity.','Five chunks kept the context manageable.'])],
+['Backend','Which API framework?','FastAPI on Uvicorn','fastapi',UL(['Natural fit with Python AI applications.','REST, validation and asynchronous support.','Works well with Uvicorn and Docker.'])],
+['Backend','How should the environment be reproduced?','Poetry inside Docker','poetry',UL(['<code>poetry.lock</code> locks versions for consistent environments.','Docker packages the app and dependencies reproducibly.'])],
+['Evaluation','How should quality be measured?','Separate retrieval and generation metrics','evalgroup',UL(['Hit Rate@5 and Recall@5 through Python scripts.','Faithfulness and other answer metrics through RAGAS.','Separation shows which stage caused a problem.'])]];
+
+/* ---------- contributions ---------- */
+const CONTRIB=[
+['Document processing','me','Implemented PDF extraction, text cleaning and chunking.','docproc'],
+['Embedding generation','me','Integrated the Gemini embedding model to convert chunks into vectors.','embed'],
+['Vector database','me','Configured ChromaDB to store embeddings, text chunks and source metadata.','chroma'],
+['Retrieval pipeline','me','Implemented hybrid retrieval using dense similarity search, BM25 and weighted RRF.','hybrid'],
+['LLM integration','me','Integrated Google Gemini and designed the prompt structure for context-grounded generation.','gen'],
+['Evaluation','me','Developed Python evaluation scripts for Hit Rate@5 and Recall@5 and used RAGAS to evaluate generated answers.','evalgroup'],
+['Backend','part','Contributed to the FastAPI backend.','fastapi'],
+['Containers and dependencies','part','Contributed to Docker configuration and dependency management.','docker'],
+['Frontend','team','Handled by senior engineers.','frontend'],
+['Deployment','team','Handled by senior engineers.','frontend'],
+['Supervision','team','Senior engineers supervised the project.','frontend']];
+
+/* ---------- gaps ---------- */
+const GAPS=[
+['Exact number of questions in the internal test dataset','gt'],
+['Exact Gemini generation model/version','gemini'],
+['Exact PDF loader and text-splitter classes','extract'],
+['Exact method used to detect headings and apply chunk overlap','chunk'],
+['Exact retrieval candidate counts before selecting the final five','hybrid'],
+['Exact FastAPI endpoint paths and JSON response schema','fastapi'],
+['Exact RAGAS evaluator model and configuration','ragas'],
+['Exact numerical scores for context recall and answer correctness','ragas'],
+['Whether the reported recall calculation deduplicated document identifiers','recall'],
+['Exact measured latency and API costs','gemini'],
+['Details of document access permissions and authentication','security']];
+const GAPS_EXTRA=[
+['How the 0.7 / 0.3 retrieval weights were chosen','hybrid'],
+['The RRF constant <i>k</i> used in the project','rrf'],
+['How and where the BM25 index was stored and refreshed','bm25']];
+
+const PITCH=`<p>During my AI Engineering internship at Orange Jordan, I developed a database-integrated RAG system that allowed employees of a client company to ask questions about information stored in their internal PDF documents.</p>
+<p>I used LangChain and Unstructured to extract the PDF content, applied Python-based text cleaning, and divided the documents into heading-based chunks with a maximum size of 1,000 characters and 100 characters of overlap. I generated embeddings using Google's <code>gemini-embedding-001</code> model and stored them in ChromaDB alongside their original text and source metadata.</p>
+<p>For information retrieval, I implemented a hybrid approach combining 70% dense retrieval and 30% BM25 keyword retrieval, using LangChain's <code>EnsembleRetriever</code> with Reciprocal Rank Fusion. The five highest-ranked chunks were passed to Google Gemini using a Stuffing-based prompt containing instructions, retrieved context and the employee's question. The model was instructed to generate grounded answers, acknowledge insufficient information and reference the original documents.</p>
+<p>I contributed to the FastAPI backend and used Docker, Poetry and Uvicorn for application packaging, dependency management and server execution. I evaluated the system using the company's internal ground-truth dataset: Python scripts measured retrieval quality, while RAGAS evaluated faithfulness and other answer-quality metrics.</p>
+<p><b>The final system achieved 91% Hit Rate@5, 89% Recall@5 and 93% faithfulness.</b> I developed the pipeline under senior engineering supervision, while other team members handled the frontend and final deployment.</p>`;
+
+/* ---------- icons ---------- */
+const ICONS={
+blueprint:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',layers:'<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',chat:'<path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5Z"/>',
+target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',file:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',broom:'<path d="m19 4-8 8M8 11l5 5-3 4c-3 0-6-3-6-6l4-3Z"/>',
+cut:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 8 20 19M8.5 16 20 5"/>',tag:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.5"/>',
+vector:'<circle cx="5" cy="19" r="2"/><path d="M6.5 17.5 19 5M19 5h-6M19 5v6"/>',db:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+refresh:'<path d="M20 11a8 8 0 0 0-14-5L3 9M3 3v6h6M4 13a8 8 0 0 0 14 5l3-3M21 21v-6h-6"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+api:'<path d="m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/>',merge:'<path d="M6 3v6a6 6 0 0 0 6 6h0a6 6 0 0 0 6-6V3M12 15v6"/>',radar:'<circle cx="12" cy="12" r="9"/><path d="M12 12 18 6M12 7a5 5 0 1 0 5 5"/>',
+key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>',funnel:'<path d="M3 4h18l-7 8v7l-4 2v-9L3 4Z"/>',list:'<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
+spark:'<path d="m12 3 2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6Z"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16v4ZM13 7l4 4"/>',shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/>',
+quote:'<path d="M8 7H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v-1a4 4 0 0 1-3 4M19 7h-3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v-1a4 4 0 0 1-3 4"/>',send:'<path d="M21 3 3 10l7 3 3 7 8-17ZM10 13l5-5"/>',
+box:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',server:'<rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+team:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.500 7 6M16 4.500a3.500 3.500 0 0 1 0 7M18 14c2.500.5 4 3 4 6"/>',gauge:'<path d="M4 18a9 9 0 1 1 16 0M12 14l4-5"/><circle cx="12" cy="15" r="1.500"/>',net:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+flask:'<path d="M9 3h6M10 3v6L4.500 19a1.500 1.500 0 0 0 1.300 2h12.400a1.500 1.500 0 0 0 1.300-2L14 9V3M7 15h10"/>',bug:'<rect x="7" y="8" width="10" height="13" rx="5"/><path d="M9 8V6a3 3 0 0 1 6 0v2M3 13h4M17 13h4M4 7l3 3M20 7l-3 3M4 20l3-3M20 20l-3-3"/>',
+road:'<path d="M5 21 9 3M19 21 15 3M12 5v3M12 11v3M12 17v3"/>',bolt:'<path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/>',pulse:'<path d="M3 12h4l3 7 4-14 3 7h4"/>',scale:'<path d="M3 21h18M6 21V11M12 21V6M18 21V14"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.500 1.500M17.500 17.500 19 19M5 19l1.500-1.500M17.500 6.500 19 5"/>',moon:'<path d="M20 15A9 9 0 0 1 9 4a8 8 0 1 0 11 11Z"/>',
+close:'<path d="M6 6l12 12M18 6 6 18"/>',plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',fit:'<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>',
+full:'<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/>',left:'<path d="m15 6-6 6 6 6"/>',right:'<path d="m9 6 6 6-6 6"/>',arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',play:'<path d="M7 4v16l13-8L7 4Z"/>',tree:'<path d="M4 5h8M8 12h12M8 19h12M4 5v14M4 12h4M4 19h4"/>',collapse:'<path d="M4 14h6v6M20 10h-6V4M14 10l6-6M4 20l6-6"/>',expand:'<path d="M14 4h6v6M10 20H4v-6M20 4l-6 6M4 20l6-6"/>',
+stack:'<path d="M4 7h16M4 12h16M4 17h16"/>',fork:'<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M6 13c0-3 12-1 12-2"/>',me:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.600-7 8-7s8 3 8 7"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.7.300-1 .8-1 1.700M12 17h.01"/>',gap:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>'
+};
+const I=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+
+/* ---------- lookups ---------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const BY=Object.fromEntries(COMPONENTS.map(c=>[c.id,c]));
+const laneColor=l=>`var(${LANES[l]?LANES[l].color:'--'+l})`;
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- geometry ---------- */
+const NW=164,NH=84,W=1954,H=1000;
+const POS={business:[40,54],pdfs:[240,54],extract:[480,54],clean:[680,54],chunk:[880,54],meta:[680,150],embed:[1150,54],chroma:[1480,54],update:[1750,54],
+question:[40,346],fastapi:[240,346],dense:[480,346],bm25:[480,442],rrf:[700,346],top5:[900,346],prompt:[1130,346],gemini:[1330,346],guard:[1330,442],sources:[1530,346],response:[1750,346],
+frontend:[40,628],uvicorn:[240,628],poetry:[40,724],docker:[240,724],hit:[700,628],gt:[700,724],recall:[900,628],faith:[1330,628],ragas:[1530,628],errors:[1750,628],
+rerank:[40,888],cache:[440,888],monitor:[840,888],scale:[1240,888],security:[1640,888]};
+const LANEBOX=[
+ {id:'ingest',comp:'lane-ingest',x:16,y:10,w:1922,h:244,title:'DOCUMENT INGESTION',tx:32,ty:36},
+ {id:'qa',comp:'lane-qa',x:16,y:302,w:1922,h:244,title:'QUESTION ANSWERING',tx:32,ty:328},
+ {id:'run',x:16,y:584,w:420,h:244},
+ {id:'eval',x:668,y:584,w:1270,h:244},
+ {id:'prop',x:16,y:844,w:1922,h:146}];
+const GROUPS={
+ docproc:{x:464,y:18,w:596,h:226},
+ hybrid:{x:464,y:310,w:616,h:226},
+ gen:{x:1114,y:310,w:596,h:226},
+ runtime:{x:24,y:590,w:404,h:232,bare:1,hx:40},
+ evalgroup:{x:676,y:590,w:1254,h:232,bare:1,hx:326},
+ proposed:{x:24,y:850,w:1906,h:132,bare:1}};
+const G1=270,G2=286,G3=566;
+const EDGES=[
+ ['business','pdfs','h'],['pdfs','extract','h'],['extract','clean','h'],['clean','chunk','h'],['chunk','embed','h'],['embed','chroma','h',{label:'vectors'}],['update','chroma','hl',{dash:1,label:'re-ingest'}],
+ ['extract','meta','Lr',{dash:1}],['meta','chunk','Ru',{dash:1,tx:.3}],
+ ['chunk','bm25','dropLeft',{fx:.7,c:'ingest',label:'chunks searched by BM25',lx:760,ly:G1}],
+ ['chroma','dense','drop',{g:G2,tx:.85,c:'ingest',label:'embeddings + text + metadata',lx:1040,ly:G2}],
+ ['question','fastapi','h'],['fastapi','dense','h'],['fastapi','bm25','bus'],['dense','rrf','h',{c:'retr'}],['bm25','rrf','Ru',{c:'retr'}],['rrf','top5','h',{c:'retr'}],
+ ['top5','prompt','h',{c:'gen'}],['prompt','gemini','h',{c:'gen'}],['guard','gemini','up',{dash:1,c:'gen'}],['gemini','sources','h',{c:'gen'}],['sources','response','h',{c:'gen'}],
+ ['frontend','question','up',{dash:1,fx:.1,c:'run'}],['uvicorn','fastapi','up',{c:'run'}],['docker','uvicorn','up',{c:'run'}],['poetry','docker','h',{c:'run'}],
+ ['top5','recall','v',{c:'eval'}],['top5','hit','drop',{g:G3,c:'eval'}],['sources','ragas','v',{c:'eval'}],['sources','faith','drop',{g:G3,c:'eval'}],['response','errors','v',{c:'eval'}],
+ ['gt','hit','up',{c:'eval'}],['gt','recall','Ru',{c:'eval'}],['gt','ragas','Ru',{c:'eval'}],['ragas','faith','hl',{c:'eval'}]];
+
+const state={sel:null,collapsed:new Set(store.get('rag.collapsed',['proposed'])),view:'blueprint',t:{k:1,x:0,y:0},touched:false,ptab:'details'};
+
+function vis(id){const c=BY[id];return c&&c.group&&state.collapsed.has(c.group)?c.group:id}
+function box(id){const v=vis(id);if(GROUPS[v]&&!POS[v])return{x:GROUPS[v].x,y:GROUPS[v].y,w:GROUPS[v].w,h:GROUPS[v].h};return{x:POS[v][0],y:POS[v][1],w:NW,h:NH}}
+function roundPath(p,r=9){let d=`M${p[0][0]} ${p[0][1]}`;for(let i=1;i<p.length;i++){const[a,b]=p[i],n=p[i+1];if(!n){d+=` L${a} ${b}`;break}
+ const pv=p[i-1],l1=Math.hypot(a-pv[0],b-pv[1]),l2=Math.hypot(n[0]-a,n[1]-b),q=Math.min(r,l1/2,l2/2);
+ const s=[a-(a-pv[0])/l1*q,b-(b-pv[1])/l1*q],e=[a+(n[0]-a)/l2*q,b+(n[1]-b)/l2*q];d+=` L${s[0]} ${s[1]} Q${a} ${b} ${e[0]} ${e[1]}`}return d}
+function route(e){
+ const[f,t,type,o={}]=e,A=box(f),B=box(t),af=POS[f],at=POS[t];
+ const ax=af[0]+NW*(o.fx??.5),ay=af[1]+NH/2,bx=at[0]+NW*(o.tx??.5),by=at[1]+NH/2;
+ const R=A.x+A.w,L=B.x,Bt=A.y+A.h,Tp=B.y,Tb=B.y+B.h;
+ switch(type){
+  case 'h':return[[R,ay],...(ay===by?[]:[[(R+L)/2,ay],[(R+L)/2,by]]),[L,by]];
+  case 'hl':return[[A.x,ay],[B.x+B.w,by]];
+  case 'bus':{const X=424;return[[X,ay],[X,by],[L,by]]}
+  case 'v':return[[ax,Bt],[ax,Tp]];
+  case 'up':return[[ax,A.y],[ax,Tb]];
+  case 'Lr':return[[ax,Bt],[ax,by],[L,by]];
+  case 'Ru':return[[R,ay],[bx,ay],[bx,Tb]];
+  case 'drop':return[[ax,Bt],[ax,o.g],[bx,o.g],[bx,Tp]];
+  case 'dropLeft':{if(vis(t)!==t)return[[ax,Bt],[ax,G1],[B.x+26,G1],[B.x+26,Tp]];return[[ax,Bt],[ax,G1],[445,G1],[445,by],[L,by]]}
+ }
+}
+function edgePath(e,pts){if(e[2]==='dropLeft'&&vis(e[1])===e[1]){const hy=POS.dense[1]+NH/2,up=pts.slice(0,3).concat([[445,hy-7]]),dn=[[445,hy+7],[445,pts[3][1]],pts[4]];return roundPath(up)+` A7 7 0 0 1 445 ${hy+7}`+roundPath(dn).replace(/^M[^L]*/,' ')}return roundPath(pts)}
+function arrow(pts){const b=pts[pts.length-1],a=pts[pts.length-2],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l,s=8,w=5;return`${b[0]},${b[1]} ${b[0]-ux*s-uy*w},${b[1]-uy*s+ux*w} ${b[0]-ux*s+uy*w},${b[1]-uy*s-ux*w}`}
+function visibleEdges(){const seen=new Set,out=[];EDGES.forEach(e=>{const f=vis(e[0]),t=vis(e[1]);if(f===t)return;const k=f+'>'+t;if(seen.has(k))return;seen.add(k);out.push({e,f,t})});return out}
+
+/* ---------- scene ---------- */
+function nodeSvg(c){const[x,y]=POS[c.id];const cls=['node'];if(c.status==='prop')cls.push('prop');if(c.own==='team'&&!c.ownText)cls.push('team');
+ return`<g class="${cls.join(' ')}" data-id="${c.id}" tabindex="0" role="button" aria-label="${esc(c.title)}: ${esc(c.sub||'')}" transform="translate(${x} ${y})" style="--c0:${laneColor(c.lane)}">
+ <rect class="bg" width="${NW}" height="${NH}" rx="11"/><rect class="bar" x="0" y="13" width="3.500" height="${NH-26}" rx="1.700"/>
+ <svg class="ico" x="13" y="10" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round">${ICONS[c.icon]||''}</svg>
+ ${c.score?`<text class="scr" x="${NW-12}" y="27">${c.score}</text>`:''}
+ <text class="ttl" x="13" y="52">${esc(c.title)}</text><text class="sub" x="13" y="71">${esc(c.sub||'')}</text></g>`}
+function fitLabels(){$$('#world .node:not(.gc)').forEach(n=>{const t=$('.ttl',n),s=$('.sub',n);if(!t)return;const max=NW-22;
+ if(t.getComputedTextLength()>max&&t.textContent.includes(' ')){const w=t.textContent.split(' ');let a=[],b=w.slice();const NS='http://www.w3.org/2000/svg';
+  while(b.length>1){a.push(b.shift());t.textContent=a.concat(b[0]).join(' ');if(t.getComputedTextLength()>max)break}
+  const l1=a.join(' '),l2=b.join(' ');t.textContent='';[[l1,'45'],[l2,'62']].forEach(([x,y])=>{const p=document.createElementNS(NS,'tspan');p.setAttribute('x','13');p.setAttribute('y',y);p.textContent=x;t.appendChild(p)});
+  if(s)s.setAttribute('y','77')}
+ if(s&&s.getComputedTextLength()>max)s.style.fontSize=(12.2*max/s.getComputedTextLength()).toFixed(2)+'px'})}
+function chev(x,y,open){return`<g class="tog" transform="translate(${x} ${y})"><rect width="24" height="24" rx="6"/><path d="${open?'M7 14l5-5 5 5':'M7 10l5 5 5-5'}"/></g>`}
+function renderScene(){
+ let h='';
+ LANEBOX.forEach(l=>{const c=laneColor(l.id);h+=`<g class="lane" style="--c0:${c}"><rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" rx="16"/>${l.title?`<g class="lanehit" data-id="${l.comp}" tabindex="0" role="button" aria-label="${l.title}"><text x="${l.tx}" y="${l.ty}">${l.title}</text></g>`:''}</g>`});
+ Object.entries(GROUPS).forEach(([id,g])=>{const c=BY[id],shut=state.collapsed.has(id),col=laneColor(c.lane);
+  if(shut){const names=c.children.map(k=>BY[k].title).join('  ·  ');
+   h+=`<g class="grp" style="--c0:${col}"><g class="node gc ${id==='proposed'?'prop':''}" data-id="${id}" tabindex="0" role="button" aria-label="${esc(c.title)}" transform="translate(${g.x} ${g.y})">
+   <rect class="bg" width="${g.w}" height="${g.h}" rx="13"/><rect class="bar" x="0" y="16" width="3.500" height="${g.h-32}" rx="1.700"/>
+   <svg class="ico" x="18" y="${g.h/2-36}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round">${ICONS[c.icon]}</svg>
+   <text class="ttl" x="50" y="${g.h/2-17}" style="font-size:19px">${esc(c.title)}</text><text class="sub" x="18" y="${g.h/2+12}" data-wrapw="${g.w-80}" style="font-size:14px">${esc(names)}</text>
+   <text class="sub" x="18" y="${g.h/2+33}" style="fill:var(--faint);font-size:13px">${c.children.length} components, collapsed</text></g>${chev(g.x+g.w-32,g.y+8,false).replace('class="tog"',`class="tog" data-tog="${id}" tabindex="0" role="button" aria-label="Expand ${esc(c.title)}"`)}</g>`;return}
+  h+=`<g class="grp" style="--c0:${col}"><rect class="box" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12" ${g.bare?'style="stroke:none;fill:none"':''}/>
+  <g class="gh" data-id="${id}" tabindex="0" role="button" aria-label="${esc(c.title)}"><rect x="${g.x+6}" y="${g.y+4}" width="${g.w-50}" height="26" fill="transparent"/><text x="${g.x+14+(g.hx||0)}" y="${g.y+23}" ${g.bare?'style="fill:var(--c0);font-size:14px;letter-spacing:.09em;font-weight:700"':''}>${g.bare?esc(c.title).toUpperCase():esc(c.title)}</text></g>
+  ${chev(g.x+g.w-32,g.y+6,true).replace('class="tog"',`class="tog" data-tog="${id}" tabindex="0" role="button" aria-label="Collapse ${esc(c.title)}"`)}</g>`});
+ /* edges */
+ const ve=visibleEdges();let ed='',lb='';
+ ve.forEach(({e,f,t})=>{const o=e[3]||{},pts=route(e),col=laneColor(o.c||BY[e[0]].lane);
+  ed+=`<g class="edge ${o.dash?'dash':''}" data-f="${f}" data-t="${t}" style="--c0:${col}"><path class="l" d="${edgePath(e,pts)}"/><polygon points="${arrow(pts)}"/></g>`;
+  if(o.label){let x=o.lx,y=o.ly;if(x==null){const a=pts[0],b=pts[pts.length-1];x=(a[0]+b[0])/2;y=(a[1]+b[1])/2}const w=o.label.length*6.300+16;
+   lb+=`<g class="elabel" data-f="${f}" data-t="${t}"><rect x="${x-w/2}" y="${y-10}" width="${w}" height="20" rx="6"/><text x="${x}" y="${y+4}">${esc(o.label)}</text></g>`}});
+ h+=ed;
+ COMPONENTS.filter(c=>POS[c.id]&&vis(c.id)===c.id).forEach(c=>h+=nodeSvg(c));
+ h+=lb;
+ /* legend inside the diagram */
+ h+=`<g transform="translate(456 600)" style="font:12.500px var(--sans)"><text x="0" y="14" fill="var(--faint)" style="font-weight:700;letter-spacing:.08em;font-size:11.500px">READING THE DIAGRAM</text>
+ ${[['Implemented component','none','var(--line2)'],['Proposed, not built','6 5','var(--line2)'],['Handled by senior engineers','2 4','var(--line2)']].map((r,i)=>`<rect x="1" y="${32+i*28}" width="30" height="17" rx="5" fill="var(--node)" stroke="${r[2]}" stroke-width="1.400" stroke-dasharray="${r[1]}"/><text x="42" y="${45+i*28}" fill="var(--muted)">${r[0]}</text>`).join('')}
+ <path d="M1 133h30" stroke="var(--muted)" stroke-width="1.900"/><text x="42" y="137" fill="var(--muted)">Data flow</text>
+ <path d="M1 161h30" stroke="var(--muted)" stroke-width="1.900" stroke-dasharray="6 5"/><text x="42" y="165" fill="var(--muted)">Supporting link</text></g>`;
+ $('#world').innerHTML=h;fitLabels();
+ $$('#world [data-wrapw]').forEach(s=>{const m=+s.dataset.wrapw,l=s.getComputedTextLength();if(l>m)s.style.fontSize=(14*m/l).toFixed(2)+'px'});
+ applyHighlight();renderOutline();
+}
+function setCollapsed(id,v){v?state.collapsed.add(id):state.collapsed.delete(id);store.set('rag.collapsed',[...state.collapsed]);renderScene()}
+function litSet(id){const s=new Set([id]),c=BY[id];if(!c)return s;
+ const members=new Set([id]);(c.children||[]).forEach(k=>members.add(k));if(c.kind==='lane')COMPONENTS.filter(x=>x.lane===c.lane&&x.kind!=='lane').forEach(x=>members.add(x.id));
+ members.forEach(m=>s.add(vis(m)));
+ EDGES.forEach(e=>{const f=e[0],t=e[1];if(members.has(f)||members.has(vis(f)))s.add(vis(t));if(members.has(t)||members.has(vis(t)))s.add(vis(f))});return{all:s,members}}
+function applyHighlight(){const dia=$('#dia');$$('.node.sel,.node.lit,.edge.lit,.elabel.lit',dia).forEach(n=>n.classList.remove('sel','lit'));
+ const id=state.sel;if(!id||!BY[id]||id==='project'){dia.classList.remove('focus');return}
+ const{all,members}=litSet(id),mv=new Set([...members].map(vis));dia.classList.add('focus');
+ $$('.node',dia).forEach(n=>{if(all.has(n.dataset.id))n.classList.add('lit');if(mv.has(n.dataset.id)&&(n.dataset.id===vis(id)||BY[id].children||BY[id].kind==='lane'))n.classList.add('sel')});
+ $$('.edge,.elabel',dia).forEach(n=>{if(mv.has(n.dataset.f)||mv.has(n.dataset.t))n.classList.add('lit')})}
+
+/* ---------- pan & zoom ---------- */
+const clampK=k=>Math.min(3,Math.max(.25,k));
+function applyT(){const t=state.t;$('#world').setAttribute('transform',`translate(${t.x} ${t.y}) scale(${t.k})`);$('#zl').textContent=Math.round(t.k*100)+'%'}
+let anim=0;
+function animateTo(k,x,y,ms=320){cancelAnimationFrame(anim);const s={...state.t},t0=performance.now();if(matchMedia('(prefers-reduced-motion:reduce)').matches)ms=0;
+ const step=n=>{const p=ms?Math.min(1,(n-t0)/ms):1,e=1-Math.pow(1-p,3);state.t={k:s.k+(k-s.k)*e,x:s.x+(x-s.x)*e,y:s.y+(y-s.y)*e};applyT();if(p<1)anim=requestAnimationFrame(step)};anim=requestAnimationFrame(step)}
+function fit(ms){const r=$('#canvas').getBoundingClientRect();if(!r.width)return;const pad=14,k=clampK(Math.min((r.width-pad*2)/W,(r.height-pad-58)/H));const x=(r.width-W*k)/2,y=Math.max(8,(r.height-58-H*k)/2);state.touched=false;animateTo(k,x,y,ms)}
+function zoomAt(f,cx,cy){cancelAnimationFrame(anim);const r=$('#canvas').getBoundingClientRect();cx??=r.width/2;cy??=r.height/2;const t=state.t,k=clampK(t.k*f),wx=(cx-t.x)/t.k,wy=(cy-t.y)/t.k;state.t={k,x:cx-wx*k,y:cy-wy*k};state.touched=true;applyT()}
+function reveal(id){const r=$('#canvas').getBoundingClientRect();if(!r.width||!BY[id])return;const c=BY[id];let b;
+ if(c.kind==='lane'){const l=LANEBOX.find(l=>l.comp===id);b={x:l.x,y:l.y,w:l.w,h:l.h}}else if(GROUPS[id]&&!POS[id])b=GROUPS[id];else if(POS[id])b=box(id);else return;
+ const t=state.t,x1=b.x*t.k+t.x,y1=b.y*t.k+t.y,x2=(b.x+b.w)*t.k+t.x,y2=(b.y+b.h)*t.k+t.y;
+ if(x1>=8&&y1>=8&&x2<=r.width-8&&y2<=r.height-60)return;
+ const fitsW=b.w*t.k<r.width-20,nx=fitsW?r.width/2-(b.x+b.w/2)*t.k:8-b.x*t.k,ny=(r.height-40)/2-(b.y+b.h/2)*t.k;animateTo(t.k,nx,ny)}
+function initCanvas(){const cv=$('#canvas');let drag=null,moved=false;const pts=new Map;let pinch=0;
+ cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientRect();if(e.ctrlKey||e.metaKey||!e.shiftKey)zoomAt(Math.exp(-e.deltaY*.0016),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+ cv.addEventListener('pointerdown',e=>{if(e.target.closest('.tools'))return;pts.set(e.pointerId,[e.clientX,e.clientY]);drag={x:e.clientX,y:e.clientY,tx:state.t.x,ty:state.t.y};moved=false;hideTip();cancelAnimationFrame(anim)});
+ window.addEventListener('pointermove',e=>{if(!drag||!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pts.size===2){const[a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]),r=cv.getBoundingClientRect();if(pinch)zoomAt(d/pinch,(a[0]+b[0])/2-r.left,(a[1]+b[1])/2-r.top);pinch=d;moved=true;return}
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!moved&&Math.hypot(dx,dy)<5)return;moved=true;cv.classList.add('drag');state.touched=true;state.t.x=drag.tx+dx;state.t.y=drag.ty+dy;applyT()});
+ const up=e=>{pts.delete(e.pointerId);pinch=0;cv.classList.remove('drag');if(pts.size===0)drag=null;else{const[a]=[...pts.values()];drag={x:a[0],y:a[1],tx:state.t.x,ty:state.t.y}}};
+ window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+ cv.addEventListener('click',e=>{if(moved){moved=false;return}if(e.target.closest('.tools'))return;
+  const tog=e.target.closest('[data-tog]');if(tog){setCollapsed(tog.dataset.tog,!state.collapsed.has(tog.dataset.tog));return}
+  const n=e.target.closest('[data-id]');if(n){stopTrace();select(n.dataset.id);return}
+  if(state.sel){stopTrace();closePanel()}});
+ cv.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const tog=e.target.closest('[data-tog]'),n=e.target.closest('[data-id]');if(tog){e.preventDefault();const id=tog.dataset.tog;setCollapsed(id,!state.collapsed.has(id));$(`[data-tog="${id}"]`)?.focus()}else if(n){e.preventDefault();select(n.dataset.id)}});
+ const tip=$('#tip');
+ cv.addEventListener('pointerover',e=>{const n=e.target.closest('[data-id]');if(!n||drag)return;clearTimeout(tipT);tipT=setTimeout(()=>{const c=BY[n.dataset.id],r=cv.getBoundingClientRect(),b=n.getBoundingClientRect();
+   const sentence=c.short.length>135?c.short.slice(0,c.short.lastIndexOf(' ',132))+'…':c.short;tip.innerHTML=`<b>${esc(c.title)}</b><span>${esc(sentence)}</span>`;
+   let x=b.left-r.left,y=b.bottom-r.top+8;tip.classList.add('on');const tw=tip.offsetWidth,th=tip.offsetHeight;if(x+tw>r.width-8)x=r.width-tw-8;if(y+th>r.height-8)y=b.top-r.top-th-8;tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px'},170)});
+ cv.addEventListener('pointerout',e=>{if(e.target.closest('[data-id]'))hideTip()});
+ new ResizeObserver(()=>{if(!state.touched&&!state.sel)fit(0)}).observe(cv)}
+let tipT=0;function hideTip(){clearTimeout(tipT);$('#tip').classList.remove('on')}
+
+/* ---------- trace ---------- */
+let traceT=0;
+const TRACES={ingest:['pdfs','extract','clean','chunk','embed','chroma'],qa:['question','fastapi','dense','bm25','rrf','top5','prompt','gemini','sources','response']};
+function stopTrace(){if(traceT){clearInterval(traceT);traceT=0;$$('[data-trace]').forEach(b=>b.classList.remove('on'));applyHighlight()}}
+function trace(k){const was=traceT&&$(`[data-trace="${k}"]`).classList.contains('on');stopTrace();if(was)return;closePanel();$(`[data-trace="${k}"]`).classList.add('on');const seq=TRACES[k].map(vis).filter((x,i,a)=>a[i-1]!==x);let i=0;const dia=$('#dia');
+ const step=()=>{if(i>=seq.length+2){stopTrace();return}const on=new Set(seq.slice(0,i+1));dia.classList.add('focus');$$('.node',dia).forEach(n=>{n.classList.toggle('lit',on.has(n.dataset.id));n.classList.toggle('sel',n.dataset.id===seq[Math.min(i,seq.length-1)])});$$('.edge,.elabel',dia).forEach(n=>n.classList.toggle('lit',on.has(n.dataset.f)&&on.has(n.dataset.t)));i++};
+ step();traceT=setInterval(step,620)}
+
+/* ---------- code highlighting ---------- */
+function hl(src,lang){const R={python:/(#[^\n]*)|("[^"\n]*"|'[^'\n]*')|\b(from|import|for|in|if|def|return)\b|\b(\d+(?:\.\d+)?)\b|\b(EnsembleRetriever|retrieve|set|len|sum)\b/g,
+ json:/()("[^"\n]*"(?=\s*:))|()("[^"\n]*")|(\b\d+\b)/g,docker:/(#[^\n]*)|("[^"\n]*")|^(FROM|RUN|COPY|CMD)\b|()|(<[a-z]+>)/gm,text:/(#[^\n]*)|()|^(Instructions:|Context:|Question:|Answer:|Source:|Page:|Section:|Content:)|(\{[a-z_]+\})|(\[[^\]\n]+\]|->)/gm};
+ const re=R[lang];if(!re)return esc(src);let out='',last=0,m;re.lastIndex=0;
+ while((m=re.exec(src))){if(!m[0]){re.lastIndex++;continue}out+=esc(src.slice(last,m.index));let c;
+  if(lang==='json')c=m[2]?'p':m[4]?'s':'n';else c=m[1]?'c':m[2]?'s':m[3]?'k':m[4]?'n':'p';
+  out+=`<span class="t-${c}">${esc(m[0])}</span>`;last=m.index+m[0].length}
+ return out+esc(src.slice(last))}
+function enhance(root){$$('pre.code code',root).forEach(c=>{if(c.dataset.done)return;c.dataset.done=1;c.innerHTML=hl(c.textContent,c.parentElement.dataset.lang)});$$('[data-demo]',root).forEach(d=>{if(!d.dataset.done){d.dataset.done=1;DEMOS[d.dataset.demo](d)}})}
+
+/* ---------- demos ---------- */
+const DEMOS={
+ rrf(el){const ch=[['A','Refund procedure',1,3],['B','Return eligibility',2,0],['C','ABC-123 product sheet',4,1],['D','Warranty terms',3,5],['E','ABC-123 pricing',0,2],['F','Shipping policy',5,4]];let wd=.7,k=60;
+  const sel=(i,j,v)=>`<select data-i="${i}" data-j="${j}" aria-label="Rank">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${n===v?'selected':''}>${n||'none'}</option>`).join('')}</select>`;
+  el.innerHTML=`<div class="demo"><h5>Weighted RRF playground</h5><p class="hint">Hypothetical chunks for practice only. Weights start at the project's 0.7 / 0.3. The project's k is not recorded, so k = 60 here is only a demo value.</p>
+  <div class="ctl"><label>Dense weight <input type="range" data-w min="0" max="1" step=".05" value=".7"> <b data-wv>0.70 / 0.30</b></label><label>k <input type="range" data-k min="1" max="100" value="60"> <b data-kv>60</b></label></div>
+  <table class="rrf"><tr><th>Chunk</th><th>Dense rank</th><th>BM25 rank</th></tr>${ch.map((c,i)=>`<tr><td>${c[0]}. ${c[1]}</td><td>${sel(i,2,c[2])}</td><td>${sel(i,3,c[3])}</td></tr>`).join('')}</table>
+  <p class="hint" style="margin:10px 0 4px">Fused ranking. The top five go to the prompt.</p><table class="rrf" data-out></table></div>`;
+  const draw=()=>{const rows=ch.map(c=>({n:c[0]+'. '+c[1],s:(c[2]?wd/(k+c[2]):0)+(c[3]?(1-wd)/(k+c[3]):0)})).sort((a,b)=>b.s-a.s),max=rows[0].s||1;
+   $('[data-out]',el).innerHTML=rows.map((r,i)=>`<tr class="${i<5?'top':''}"><td>${i+1}</td><td>${r.n}</td><td style="width:32%"><div class="bar-w"><i style="width:${r.s/max*100}%"></i></div></td><td class="num">${r.s.toFixed(5)}</td></tr>`).join('');
+   $('[data-wv]',el).textContent=wd.toFixed(2)+' / '+(1-wd).toFixed(2);$('[data-kv]',el).textContent=k};
+  el.addEventListener('input',e=>{const t=e.target;if(t.dataset.w!==undefined)wd=+t.value;else if(t.dataset.k!==undefined)k=+t.value;else if(t.dataset.i!==undefined)ch[+t.dataset.i][+t.dataset.j]=+t.value;draw()});draw()},
+ dedup(el){const s=['A','A','A','C','D'],D=['A','B','C','D'];
+  el.innerHTML=`<div class="demo"><h5>Why deduplication matters</h5><p class="hint">Hypothetical question whose relevant documents are A and B. Each slot is the source document of one top-five chunk. Click a slot to change it.</p><div class="slots" data-s></div><div class="res" data-r></div></div>`;
+  const draw=()=>{$('[data-s]',el).innerHTML=s.map((d,i)=>`<button data-i="${i}" class="${d<'C'?'rel':''}" aria-label="Slot ${i+1}: document ${d}">${d}</button>`).join('');
+   const raw=s.filter(d=>d<'C').length/2*100,dd=new Set(s.filter(d=>d<'C')).size/2*100;$('[data-r]',el).innerHTML=`<div class="${raw>100?'bad':''}"><b>${raw}%</b>Without deduplication${raw>100?' (impossible value)':''}</div><div><b>${dd}%</b>With deduplication</div>`};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i;s[i]=D[(D.indexOf(s[i])+1)%4];draw();$(`[data-i="${i}"]`,el).focus()});draw()},
+ claims(el){const C=[['The company provides a 30-day refund period.',1,'Supported: the context states this.'],['The company provides free international shipping.',0,'Not supported: the context never mentions it.']],seen=new Set;
+  el.innerHTML=`<div class="demo"><h5>Claim-by-claim check</h5><p class="hint">Retrieved context: "The company provides a 30-day refund period." Click each claim from the generated answer.</p><div data-c></div><div data-o class="mx-out"></div></div>`;
+  const draw=()=>{$('[data-c]',el).innerHTML=C.map((c,i)=>`<button class="claim ${seen.has(i)?(c[1]?'y':'n'):''}" data-i="${i}">${c[0]}${seen.has(i)?`<small>${c[2]}</small>`:''}</button>`).join('');$('[data-o]',el).innerHTML=seen.size===2?'One of two claims is supported, so this answer has a faithfulness problem. In the general metric form, it would score 0.5.':''};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){seen.add(+b.dataset.i);draw()}});draw()},
+ matrix(el){const M=[['Contains correct information','Correct','Successful result'],['Missing correct information','Wrong','Likely retrieval problem'],['Contains correct information','Wrong','Likely generation problem'],['Missing correct information','Appears correct','Possible unsupported answer or reliance on model knowledge']];let i=0;
+  el.innerHTML=`<div class="demo" style="--c0:var(--eval)"><p class="hint">Pick a combination of retrieved context and generated answer.</p><div class="mx" data-m></div><div class="mx-out" data-o></div></div>`;
+  const draw=()=>{$('[data-m]',el).innerHTML=M.map((m,j)=>`<button data-i="${j}" class="${j===i?'on':''}"><b>${m[2]}</b>Context: ${m[0].toLowerCase()}. Answer: ${m[1].toLowerCase()}.</button>`).join('')};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){i=+b.dataset.i;draw();$(`[data-i="${i}"]`,el).focus()}});draw()}};
+
+/* ---------- side panel ---------- */
+const known=new Set(store.get('rag.known',[]));
+const qid=(cid,i)=>cid+'#'+i;
+function qaHtml(c,i,open){const id=qid(c.id,i),[q,a]=c.qa[i],k=known.has(id);return`<details class="qa ${k?'known':''}" ${open?'open':''} data-q="${id}"><summary>${q}</summary><div class="a"><p>${a}</p><div class="act"><button data-known="${id}" class="${k?'done':''}">${k?'Reviewed':'Mark as reviewed'}</button><button class="lk" data-go="${c.id}" style="--c1:${laneColor(c.lane)}"><i></i>${esc(c.title)}</button></div></div></details>`}
+function connections(c){const inc=new Set,out=new Set,me=new Set([c.id,...(c.children||[])]);EDGES.forEach(e=>{if(me.has(e[1])&&!me.has(e[0]))inc.add(e[0]);if(me.has(e[0])&&!me.has(e[1]))out.add(e[1])});
+ const lk=id=>`<button class="lk" data-go="${id}" style="--c1:${laneColor(BY[id].lane)}"><i></i>${esc(BY[id].title)}</button>`;let h='';
+ if(c.group)h+=`<p class="sub-label">Part of</p><div class="links">${lk(c.group)}</div>`;if(c.children)h+=`<p class="sub-label">Contains</p><div class="links">${c.children.map(lk).join('')}</div>`;
+ if(inc.size)h+=`<p class="sub-label">Receives from</p><div class="links">${[...inc].map(lk).join('')}</div>`;if(out.size)h+=`<p class="sub-label">Sends to</p><div class="links">${[...out].map(lk).join('')}</div>`;return h}
+function secs(c){const conn=connections(c),list=c.secs.concat(conn?[['Connections',conn]]:[]);return list.map(([t,b],i)=>`<details class="s" ${i<3||t==='Connections'?'open':''}><summary>${t}</summary><div class="sb">${b}</div></details>`).join('')}
+function panelBody(c){if(state.ptab==='interview'){return c.qa.length?c.qa.map((_,i)=>qaHtml(c,i)).join(''):`<p class="short" style="color:var(--muted)">No interview questions are attached to this component. Try a neighbouring component or the Interview view.</p>`}
+ return`<p class="short">${esc(c.short)}</p>${c.io?`<div class="io"><div><small>Input</small>${c.io[0]}</div>${I('arrow')}<div><small>Output</small>${c.io[1]}</div></div>`:''}${secs(c)}${c.tags.length?`<div class="tagrow">${c.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}`}
+function renderPanel(){const c=BY[state.sel];if(!c)return;const p=$('#panel');p.style.setProperty('--c0',laneColor(c.lane));const i=ORDER.indexOf(c.id),pv=BY[ORDER[i-1]],nx=BY[ORDER[i+1]];
+ const crumbs=[LANES[c.lane].title];if(c.group)crumbs.push(BY[c.group].title);
+ const st=c.kind==='overview'||c.kind==='lane'?null:STAT[c.status];const ow=c.ownText?['','' ]:OWN[c.own];
+ $('.pin',p).innerHTML=`<div class="phead"><button class="iconbtn pclose" data-close aria-label="Close panel">${I('close')}</button><div class="crumb">${crumbs.map((t,n)=>n&&c.group?`<span>›</span><button data-go="${c.group}">${esc(t)}</button>`:`<span>${esc(t)}</span>`).join('')}</div>
+ <h2>${I(c.icon)}${esc(c.title)}</h2><div class="badges">${st&&c.status!=='concept'?`<span class="badge ${st[0]}">${st[1]}</span>`:''}${c.ownText?`<span class="badge" style="color:var(--muted)">${esc(c.ownText)}</span>`:`<span class="badge ${ow[0]}">${ow[1]}</span>`}${c.score?`<span class="badge impl">${c.score}</span>`:''}</div>
+ <div class="ptabs" role="tablist"><button data-ptab="details" class="${state.ptab==='details'?'on':''}">Details</button><button data-ptab="interview" class="${state.ptab==='interview'?'on':''}">Interview${c.qa.length?` (${c.qa.length})`:''}</button></div></div>
+ <div class="pbody" id="pbody">${panelBody(c)}</div>
+ <div class="pfoot"><button data-go="${pv?pv.id:''}" ${pv?'':'disabled'} aria-label="Previous component">${I('left')}<span>${pv?esc(pv.title):'Start'}</span></button><em>${i+1}/${ORDER.length}</em><button class="nx" data-go="${nx?nx.id:''}" ${nx?'':'disabled'} aria-label="Next component"><span>${nx?esc(nx.title):'End'}</span>${I('right')}</button></div>`;
+ enhance(p)}
+function select(id,opts={}){const c=BY[id];if(!c)return;hideTip();if(state.view!=='blueprint')setView('blueprint',true);
+ if(c.group&&state.collapsed.has(c.group))setCollapsed(c.group,false);
+ state.sel=id;$('#panel').classList.add('on');renderPanel();$('#pbody').scrollTop=0;applyHighlight();renderOutline();setHash('#/c/'+id);setTimeout(()=>reveal(id),270);
+ if(innerWidth<=760)$('#panel').querySelector('[data-close]')?.focus()}
+function closePanel(){if(!state.sel&&!$('#panel').classList.contains('on'))return;state.sel=null;$('#panel').classList.remove('on');applyHighlight();renderOutline();setHash('#/v/blueprint');setTimeout(()=>{if(!state.touched)fit()},270)}
+function setHash(h){if(location.hash!==h)location.hash=h}
+function step(d){const i=ORDER.indexOf(state.sel),n=ORDER[i+d];if(n)select(n)}
+
+/* ---------- outline ---------- */
+function renderOutline(){const row=(c,cl='')=>`<button class="${cl} ${state.sel===c.id?'sel':''}" data-go="${c.id}">${I(c.icon)}<span>${esc(c.title)}</span>${c.children?`<span class="tw ${state.collapsed.has(c.id)?'shut':''}" data-tog2="${c.id}" aria-hidden="true">▾</span>`:''}</button>`;
+ let h=row(BY.project,'gr');Object.keys(LANES).forEach(l=>{h+=`<h3 style="--c0:${laneColor(l)}"><i></i>${LANES[l].title}</h3>`;
+  COMPONENTS.filter(c=>c.lane===l&&!c.group&&c.kind!=='overview').sort((a,b)=>ORDER.indexOf(a.id)-ORDER.indexOf(b.id)).forEach(c=>{h+=row(c,c.children?'gr':'');if(c.children&&!state.collapsed.has(c.id))c.children.forEach(k=>h+=row(BY[k],'ch'))})});
+ $('#outline').innerHTML=h}
+
+/* ---------- views ---------- */
+const NAV=[['blueprint','Blueprint','blueprint'],['evaluation','Evaluation','gauge'],['stack','Tech Stack','stack'],['decisions','Decisions','fork'],['contrib','My Contributions','me'],['interview','Interview','help'],['roadmap','Roadmap','road'],['gaps','Not Recorded','gap']];
+function setView(v,quiet){state.view=v;$$('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$$('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+ if(!quiet&&v!=='blueprint'){setHash('#/v/'+v)}else if(!quiet){if(state.sel)closePanel();else setHash('#/v/blueprint')}
+ if(v==='blueprint')requestAnimationFrame(()=>{if(!state.touched)fit(0)});if(v==='evaluation')requestAnimationFrame(animGauges)}
+function animGauges(){$$('.gauge .va').forEach(c=>{const L=2*Math.PI*36;c.style.strokeDasharray=`0 ${L}`;requestAnimationFrame(()=>requestAnimationFrame(()=>c.style.strokeDasharray=`${L*c.dataset.v/100} ${L}`))})}
+const open=id=>`<button class="chip" data-go="${id}" style="--c0:${laneColor(BY[id].lane)}">Open in blueprint ${I('arrow')}</button>`;
+let evalSel='hit';
+function renderEval(){const M=[['hit','Hit Rate@5',91,'At least one relevant result in the top five'],['recall','Recall@5',89,'Share of relevant results found in the top five'],['faith','Faithfulness',93,'Answer support from retrieved context']];
+ $('#v-evaluation').innerHTML=`<div class="scroll"><div class="page" style="--c0:var(--eval)"><h1>Performance Evaluation</h1><p class="lead">Retrieval and generation were measured separately against the client company's internal ground-truth dataset. Select a metric to see how it was calculated.</p>
+ <div class="grid g3">${M.map(m=>`<button class="card metric ${m[0]===evalSel?'on':''}" data-metric="${m[0]}"><div class="mhead"><svg class="gauge" viewBox="0 0 84 84" role="img" aria-label="${m[1]} ${m[2]}%"><circle class="tr" cx="42" cy="42" r="36"/><circle class="va" cx="42" cy="42" r="36" data-v="${m[2]}"/><text x="42" y="50">${m[2]}%</text></svg><div><h3>${m[1]}</h3><p style="margin:0">${m[3]}</p></div></div></button>`).join('')}</div>
+ <div class="detail" id="evalDetail"></div>
+ <h2 class="sec">Evaluation inputs and tools</h2><div class="grid g3"><div class="card"><h3>Ground truth</h3><p>Test questions, expected answers and relevant documents, provided by the client. Number of questions: ${NR()}</p>${open('gt')}</div><div class="card"><h3>Python scripts</h3><p>Calculated Hit Rate@5 and Recall@5 using the company's ground-truth document information.</p>${open('hit')}</div><div class="card"><h3>RAGAS</h3><p>LLM-based evaluation of faithfulness, context recall and answer correctness. Exact scores for the last two: ${NR()}</p>${open('ragas')}</div></div>
+ <h2 class="sec">Error analysis</h2><div data-demo="matrix"></div>${open('errors')}</div></div>`;
+ $('#evalDetail').innerHTML=`<div class="card" style="--c0:var(--eval)">${secs({...BY[evalSel],secs:BY[evalSel].secs.filter(s=>s[0]!=='Connections')}).replace(/<details class="s"( open)?/g,'<details class="s" open')}</div>`;enhance($('#v-evaluation'))}
+function renderStack(f='All'){const cat=r=>BY[r[3]].lane,F={All:()=>1,Ingestion:r=>cat(r)==='ingest',Retrieval:r=>BY[r[3]].group==='hybrid'||r[3]==='hybrid',Generation:r=>BY[r[3]].group==='gen','Backend & Runtime':r=>cat(r)==='run'||r[3]==='fastapi',Evaluation:r=>cat(r)==='eval'};
+ $('#v-stack').innerHTML=`<div class="scroll"><div class="page"><h1>Technology Stack</h1><p class="lead">Every technology in the project and what it did. Select a row to open that component.</p><div class="toolbar"><div class="seg">${Object.keys(F).map(k=>`<button data-sf="${k}" class="${k===f?'on':''}">${k}</button>`).join('')}</div></div>
+ <div class="card" style="padding:0;overflow:hidden">${STACK.filter(F[f]).map(r=>`<button class="stack-row" data-go="${r[3]}" style="--c0:${laneColor(BY[r[3]].lane)}"><b>${esc(r[1])}</b><span>${esc(r[0])}: ${esc(r[2])}</span><em>${esc(BY[r[3]].title)} →</em></button>`).join('')}</div></div></div>`}
+function renderDecisions(f='All'){const cats=['All',...new Set(DECISIONS.map(d=>d[0]))],col={Approach:'--accent',Ingestion:'--ingest',Retrieval:'--retr',Generation:'--gen',Backend:'--run',Evaluation:'--eval'};
+ $('#v-decisions').innerHTML=`<div class="scroll"><div class="page"><h1>Engineering Decisions</h1><p class="lead">What was decided, what was selected, and why. Expand a decision for the reasoning.</p><div class="toolbar"><div class="seg">${cats.map(k=>`<button data-df="${k}" class="${k===f?'on':''}">${k}</button>`).join('')}</div></div>
+ ${DECISIONS.filter(d=>f==='All'||d[0]===f).map(d=>`<details class="dec" style="--c0:var(${col[d[0]]})"><summary><span class="q">${esc(d[1])}</span><span class="an">${d[2]}</span><span class="lk2" style="color:var(--faint)">${esc(d[0])}</span></summary><div class="b">${d[4]}${open(d[3])}</div></details>`).join('')}
+ <h2 class="sec">Balancing accuracy, cost and latency</h2><div class="tri"><div class="card"><h3>Retrieval quality</h3><p>Hybrid retrieval and RRF combined the strengths of semantic and keyword-based search.</p></div><div class="card"><h3>Token usage</h3><p>The final context was limited to five chunks to avoid sending unnecessarily large amounts of text to Gemini.</p></div><div class="card"><h3>API cost</h3><p>Google's models were used partly because of lower-cost access through an existing agreement. Stuffing required only one generation request rather than multiple sequential LLM calls.</p></div></div>
+ <p style="color:var(--muted);margin-top:12px">Together these decisions balanced system quality, implementation complexity, latency and cost.</p></div></div>`}
+function renderContrib(){const s={me:'Developed by me',part:'I contributed',team:'Senior engineers'};
+ $('#v-contrib').innerHTML=`<div class="scroll"><div class="page"><h1>My Contributions</h1><p class="lead">I personally developed the RAG pipeline under the supervision of senior engineers. This is the ownership line to keep accurate in an interview.</p>
+ <div class="grid g3" style="margin-bottom:18px">${[['me','Developed by me','The full RAG pipeline, from document processing through evaluation, under supervision.'],['part','I contributed','FastAPI backend, Docker configuration and dependency management.'],['team','Senior engineers','Supervision, frontend and deployment.']].map(c=>`<div class="card"><span class="badge ${c[0]}">${c[1]}</span><p style="margin-top:8px">${c[2]}</p></div>`).join('')}</div>
+ <div class="card" style="padding:0;overflow:hidden"><div class="tw-wrap"><table class="resp"><tr><th>Area</th><th>Ownership</th><th>What was done</th></tr>${CONTRIB.map(r=>`<tr class="clk" data-go="${r[3]}" tabindex="0"><td><b>${esc(r[0])}</b></td><td><span class="badge ${OWN[r[1]][0]}">${s[r[1]]}</span></td><td style="color:var(--muted)">${esc(r[2])}</td></tr>`).join('')}</table></div></div></div></div>`}
+let ivf='All',ivHide=false,ivOrder=null;
+function allQ(){const out=[];ORDER.forEach(id=>BY[id].qa.forEach((_,i)=>out.push([BY[id],i])));return out}
+function renderInterview(){const L={All:()=>1,Overview:c=>c.id==='project'||c.id==='business',Ingestion:c=>c.lane==='ingest'&&c.id!=='business',Retrieval:c=>c.group==='hybrid'||c.id==='hybrid',Generation:c=>c.group==='gen',Backend:c=>c.lane==='run'||c.id==='fastapi',Evaluation:c=>c.lane==='eval',Future:c=>c.lane==='prop'};
+ let list=allQ();const total=list.length,done=list.filter(([c,i])=>known.has(qid(c.id,i))).length;list=list.filter(([c])=>L[ivf](c));if(ivHide)list=list.filter(([c,i])=>!known.has(qid(c.id,i)));
+ if(ivOrder)list.sort((a,b)=>ivOrder(qid(a[0].id,a[1]))-ivOrder(qid(b[0].id,b[1])));
+ $('#v-interview').innerHTML=`<div class="scroll"><div class="page"><h1>Interview Revision</h1><p class="lead">Answer aloud first, then expand. Answers come only from the project documentation, and gaps are marked so that you do not guess.</p>
+ <details class="s" style="margin-bottom:16px"><summary>Full project summary to practise aloud</summary><div class="sb pitch">${PITCH}</div></details>
+ <div class="toolbar"><div class="seg">${Object.keys(L).map(k=>`<button data-if="${k}" class="${k===ivf?'on':''}">${k}</button>`).join('')}</div><button class="chip ${ivHide?'on':''}" data-ihide>Hide reviewed</button><button class="chip" data-ishuf>Shuffle</button><button class="chip" data-ireset>Reset progress</button><span class="prog">${done} of ${total} reviewed</span></div>
+ ${list.length?list.map(([c,i])=>qaHtml(c,i)).join(''):'<p style="color:var(--muted)">Nothing left in this filter.</p>'}</div></div>`}
+function renderRoadmap(){const pr=['rerank','cache','monitor'];
+ $('#v-roadmap').innerHTML=`<div class="scroll"><div class="page"><h1>Scaling and Future Work</h1><p class="lead">Everything here is proposed. None of it is a claim about the original system, which used ChromaDB and a FastAPI backend.</p>
+ <h2 class="sec">If I rebuilt the project: three priorities</h2><div class="grid g3">${pr.map((id,i)=>`<div class="card" style="--c0:var(--prop)"><span class="badge prop">Priority ${i+1}</span><h3 style="margin-top:8px">${esc(BY[id].title)}</h3><p>${esc(BY[id].short)}</p>${open(id)}</div>`).join('')}</div>
+ <h2 class="sec">Scaling the system</h2><div class="card" style="padding:0;overflow:hidden"><div class="tw-wrap"><table class="resp"><tr><th>Scenario</th><th>Proposed approach</th></tr><tr><td><b>Thousands of concurrent users</b></td><td style="color:var(--muted)">Multiple FastAPI containers behind a load balancer, with request monitoring and suitable limits on external API usage.</td></tr><tr><td><b>Millions of documents</b></td><td style="color:var(--muted)">A more scalable vector database such as Qdrant or Pinecone, and separating document processing from the question-answering API.</td></tr><tr><td><b>Background processing</b></td><td style="color:var(--muted)">Ingestion in background jobs so that PDF processing and embedding generation do not block user queries.</td></tr><tr><td><b>Caching</b></td><td style="color:var(--muted)">Reduce redundant computation and repeated API requests.</td></tr><tr><td><b>Security</b></td><td style="color:var(--muted)">Employee authentication, document-level access controls, secure API key management and protection for confidential company data.</td></tr></table></div></div></div></div>`}
+function renderGaps(){const row=g=>`<button class="gapitem" data-go="${g[1]}"><span class="nr">Not recorded</span><span>${g[0]}</span><em>${esc(BY[g[1]].title)} →</em></button>`;
+ $('#v-gaps').innerHTML=`<div class="scroll"><div class="page"><h1>Details Worth Confirming</h1><p class="lead">These implementation specifics are not established in the documentation, so they should not be presented as confirmed facts. They do not change the overall architecture. Check them against the original code or project documents.</p>
+ <h2 class="sec">Listed in the project documentation</h2><div class="card" style="padding:0;overflow:hidden">${GAPS.map(row).join('')}</div>
+ <h2 class="sec">Also absent from the documentation</h2><p style="color:var(--muted);margin-top:-6px">Interviewers may ask about these too.</p><div class="card" style="padding:0;overflow:hidden">${GAPS_EXTRA.map(row).join('')}</div></div></div>`}
+
+/* ---------- search ---------- */
+const strip=s=>s.replace(/<[^>]+>/g,' ').replace(/&[a-z]+;/g,' ').replace(/\s+/g,' ');
+const SEARCH=[];COMPONENTS.forEach(c=>SEARCH.push({kind:c.status==='prop'?'Proposed':c.kind==='group'?'Group':c.kind==='lane'?'Pipeline':'Component',title:c.title,tags:c.tags.join(' '),text:strip(c.short+' '+(c.sub||'')+' '+c.secs.map(s=>s[0]+' '+s[1]).join(' ')+' '+c.qa.flat().join(' ')),go:c.id}));
+DECISIONS.forEach(d=>SEARCH.push({kind:'Decision',title:strip(d[2]),tags:d[0],text:strip(d[1]+' '+d[4]),go:d[3]}));STACK.forEach(s=>SEARCH.push({kind:'Technology',title:s[1],tags:s[0],text:s[2],go:s[3]}));GAPS.concat(GAPS_EXTRA).forEach(g=>SEARCH.push({kind:'Not recorded',title:strip(g[0]),tags:'',text:'not recorded confirm',go:g[1]}));
+let sIdx=0,sRes=[];
+function runSearch(q){const box=$('#results');q=q.trim().toLowerCase();$$('.node.match').forEach(n=>n.classList.remove('match'));if(!q){box.classList.remove('on');return}
+ const ts=q.split(/\s+/);sRes=SEARCH.map(s=>{const t=s.title.toLowerCase(),g=s.tags.toLowerCase(),x=s.text.toLowerCase();let sc=0;for(const k of ts){let p=0;if(t.startsWith(k))p=30;else if(t.includes(k))p=20;else if(g.includes(k))p=10;else if(x.includes(k))p=3;if(!p)return{sc:0};sc+=p}return{s,sc:sc+(s.kind==='Component'||s.kind==='Group'?2:0)}}).filter(r=>r.sc).sort((a,b)=>b.sc-a.sc).slice(0,12).map(r=>r.s);
+ sIdx=0;const mk=s=>{const re=new RegExp('('+ts.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','ig');return esc(s).replace(re,'<mark>$1</mark>')};
+ const snip=s=>{const lo=s.text.toLowerCase(),i=lo.indexOf(ts[0]);const st=Math.max(0,i<0?0:i-40);return(st?'…':'')+s.text.slice(st,st+100)+'…'};
+ box.innerHTML=sRes.length?sRes.map((s,i)=>`<button data-res="${i}" class="${i?'':'sel'}"><span class="kind">${s.kind}</span><b>${mk(s.title)}</b><p>${mk(snip(s))}</p></button>`).join(''):`<div class="none">No matches for "${esc(q)}".</div>`;box.classList.add('on');
+ new Set(sRes.map(s=>vis(s.go))).forEach(id=>$(`#world .node[data-id="${id}"]`)?.classList.add('match'))}
+function pick(i){const s=sRes[i];if(!s)return;$('#q').value='';runSearch('');$('#q').blur();select(s.go)}
+
+/* ---------- theme & fullscreen ---------- */
+function setTheme(t){document.documentElement.dataset.theme=t;$('#themeBtn').innerHTML=I(t==='dark'?'sun':'moon');$('#themeBtn').setAttribute('aria-label',t==='dark'?'Switch to light theme':'Switch to dark theme');store.set('rag.theme',t)}
+function toggleFs(){const on=!document.body.classList.contains('fs');if(state.view!=='blueprint')setView('blueprint');document.body.classList.toggle('fs',on);const d=document;try{if(on&&d.documentElement.requestFullscreen)d.documentElement.requestFullscreen().catch(()=>{});else if(!on&&d.fullscreenElement)d.exitFullscreen()}catch(e){}setTimeout(()=>{state.touched=false;fit()},120)}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1500)}
+
+/* ---------- routing ---------- */
+function route_(){const h=location.hash;let m;if((m=h.match(/^#\/c\/(.+)$/))&&BY[m[1]]){if(state.sel!==m[1]||state.view!=='blueprint')select(m[1])}else if((m=h.match(/^#\/v\/(.+)$/))&&NAV.some(n=>n[0]===m[1])){if(m[1]==='blueprint'&&state.sel)closePanel();if(state.view!==m[1])setView(m[1],true)}}
+
+/* ---------- boot ---------- */
+function boot(){
+ setTheme(store.get('rag.theme','dark'));
+ $('#nav').innerHTML=NAV.map(n=>`<button data-view="${n[0]}">${I(n[2])}${n[1]}</button>`).join('');
+ $('#searchIcon').outerHTML=I('search');
+ $('#strip').innerHTML=`<button class="chip" id="outlineBtn">${I('tree')}Outline</button><button class="chip" data-go="project">${I('blueprint')}Overview</button><button class="chip" data-go="hit">Hit Rate@5 <b>91%</b></button><button class="chip" data-go="recall">Recall@5 <b>89%</b></button><button class="chip" data-go="faith">Faithfulness <b>93%</b></button><span class="spacer"></span><button class="chip" data-trace="ingest">${I('play')}Trace ingestion</button><button class="chip" data-trace="qa">${I('play')}Trace a question</button><span style="width:6px"></span><div class="legend">${[['ingest','Ingestion'],['qa','Query'],['retr','Retrieval'],['gen','Generation'],['run','Runtime'],['eval','Evaluation'],['prop','Proposed']].map(([c,t])=>`<span><i style="background:var(--${c})"></i>${t}</span>`).join('')}</div>`;
+ $('#tools').innerHTML=`<button data-t="out" aria-label="Zoom out" title="Zoom out (−)">${I('minus')}</button><button id="zl" data-t="fit" title="Reset view (0)">100%</button><button data-t="in" aria-label="Zoom in" title="Zoom in (+)">${I('plus')}</button><span class="sep"></span><button data-t="fit" aria-label="Reset view" title="Reset view (0)">${I('fit')}</button><button data-t="full" aria-label="Full-screen architecture" title="Full screen (F)">${I('full')}</button><span class="sep"></span><button data-t="shut" aria-label="Collapse all groups" title="Collapse all groups">${I('collapse')}</button><button data-t="open" aria-label="Expand all groups" title="Expand all groups">${I('expand')}</button>`;
+ setView('blueprint',true);renderScene();renderEval();renderStack();renderDecisions();renderContrib();renderInterview();renderRoadmap();renderGaps();
+ initCanvas();
+ document.addEventListener('click',e=>{
+  const t=e.target,cp=t.closest('[data-copy]');if(cp){const txt=cp.closest('pre').querySelector('code').textContent;(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Copied'),()=>toast('Copy is unavailable here'));return}
+  if(t.closest('[data-tog2]')){const id=t.closest('[data-tog2]').dataset.tog2;e.stopPropagation();setCollapsed(id,!state.collapsed.has(id));return}
+  const go=t.closest('[data-go]');if(go&&go.dataset.go&&!go.closest('#canvas')){e.preventDefault();stopTrace();select(go.dataset.go);return}
+  if(t.closest('[data-close]')){closePanel();return}
+  const v=t.closest('[data-view]');if(v){stopTrace();setView(v.dataset.view);return}
+  const pt=t.closest('[data-ptab]');if(pt){state.ptab=pt.dataset.ptab;renderPanel();return}
+  const kn=t.closest('[data-known]');if(kn){const id=kn.dataset.known;known.has(id)?known.delete(id):known.add(id);store.set('rag.known',[...known]);const q=kn.closest('.qa');q.classList.toggle('known',known.has(id));kn.classList.toggle('done',known.has(id));kn.textContent=known.has(id)?'Reviewed':'Mark as reviewed';if(q.closest('#v-interview')){const op=[...$$('#v-interview details[open]')].map(d=>d.dataset.q);renderInterview();op.forEach(o=>{if(o){const d=$(`#v-interview [data-q="${CSS.escape(o)}"]`);if(d)d.open=true}})}return}
+  const tr=t.closest('[data-trace]');if(tr){trace(tr.dataset.trace);return}
+  const tb=t.closest('[data-t]');if(tb){const a=tb.dataset.t;if(a==='in')zoomAt(1.2);if(a==='out')zoomAt(1/1.2);if(a==='fit')fit();if(a==='full')toggleFs();if(a==='shut'){Object.keys(GROUPS).forEach(g=>state.collapsed.add(g));store.set('rag.collapsed',[...state.collapsed]);renderScene()}if(a==='open'){state.collapsed.clear();store.set('rag.collapsed',[]);renderScene()}return}
+  if(t.closest('#outlineBtn')){$('#outline').classList.toggle('on');$('#outlineBtn').classList.toggle('on');state.touched=false;return}
+  if(t.closest('.brand')){select('project');return}
+  const mt_=t.closest('[data-metric]');if(mt_){evalSel=mt_.dataset.metric;renderEval();$$('.gauge .va').forEach(c=>c.style.strokeDasharray=`${2*Math.PI*36*c.dataset.v/100} ${2*Math.PI*36}`);return}
+  const sf=t.closest('[data-sf]');if(sf){renderStack(sf.dataset.sf);return}const df=t.closest('[data-df]');if(df){renderDecisions(df.dataset.df);return}
+  const iff=t.closest('[data-if]');if(iff){ivf=iff.dataset.if;renderInterview();return}
+  if(t.closest('[data-ihide]')){ivHide=!ivHide;renderInterview();return}
+  if(t.closest('[data-ishuf]')){const m=new Map;ivOrder=k=>{if(!m.has(k))m.set(k,Math.random());return m.get(k)};renderInterview();return}
+  if(t.closest('[data-ireset]')){known.clear();store.set('rag.known',[]);renderInterview();return}
+  const r=t.closest('[data-res]');if(r){pick(+r.dataset.res);return}
+  if(!t.closest('.search'))$('#results').classList.remove('on')});
+ $$('#v-contrib').forEach(v=>v.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.go)select(e.target.dataset.go)}));
+ const q=$('#q');q.addEventListener('input',()=>runSearch(q.value));q.addEventListener('focus',()=>q.value&&runSearch(q.value));
+ q.addEventListener('keydown',e=>{const b=$$('#results [data-res]');if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!b.length)return;b[sIdx].classList.remove('sel');sIdx=(sIdx+(e.key==='ArrowDown'?1:b.length-1))%b.length;b[sIdx].classList.add('sel');b[sIdx].scrollIntoView({block:'nearest'})}if(e.key==='Enter')pick(sIdx);if(e.key==='Escape'){q.value='';runSearch('');q.blur()}});
+ $('#themeBtn').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+ document.addEventListener('keydown',e=>{const ty=/INPUT|SELECT|TEXTAREA/.test(e.target.tagName);if(e.key==='/'&&!ty){e.preventDefault();q.focus();return}if(ty)return;
+  if(e.key==='Escape'){if(state.sel)closePanel();else if(document.body.classList.contains('fs'))toggleFs();stopTrace()}
+  if(state.view==='blueprint'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(e.key==='ArrowRight'&&state.sel)step(1);if(e.key==='ArrowLeft'&&state.sel)step(-1);if(e.key==='+'||e.key==='=')zoomAt(1.2);if(e.key==='-')zoomAt(1/1.2);if(e.key==='0')fit();if(e.key==='f'||e.key==='F')toggleFs()}});
+ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&document.body.classList.contains('fs')){document.body.classList.remove('fs');setTimeout(()=>{state.touched=false;fit()},120)}});
+ addEventListener('hashchange',route_);
+ if(innerWidth<=760&&!location.hash.startsWith('#/c/')){$('#outline').classList.add('on');$('#outlineBtn').classList.add('on')}
+ requestAnimationFrame(()=>{fit(0);route_()});
+}
+boot();
+
+</script>
+</body>
+</html>
